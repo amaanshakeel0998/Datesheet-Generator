@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>University Datesheet Generator</title>
+    <link rel="stylesheet" href="style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-content">
+          <div class="logo">
+            <i class="fas fa-calendar-alt"></i>
+            <h1>University Datesheet Generator</h1>
+          </div>
+          <p class="subtitle">Automated Exam Scheduling System</p>
+          <!-- Theme Toggle Button -->
+          <button class="theme-toggle-btn" id="theme-toggle-btn">
+            <i class="fas fa-palette"></i> Customize Colors
+          </button>
+        </div>
+      </header>
+
+      <!-- Theme Customization Panel -->
+      <div class="theme-panel" id="theme-panel">
+        <div class="theme-panel-content">
+          <div class="theme-panel-header">
+            <h3><i class="fas fa-palette"></i> Theme Customization</h3>
+            <button class="close-theme-btn" id="close-theme-btn">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="theme-panel-body">
+            <div class="color-picker-group">
+              <div class="color-picker-item">
+                <label for="header-color">
+                  <i class="fas fa-paint-brush"></i> Header Color
+                </label>
+                <div class="color-input-group">
+                  <input type="color" id="header-color" value="#4a90e2" />
+                  <input
+                    type="text"
+                    id="header-color-text"
+                    value="#4a90e2"
+                    readonly
+                  />
+                </div>
+              </div>
+              <div class="color-picker-item">
+                <label for="body-color">
+                  <i class="fas fa-fill-drip"></i> Body/Section Color
+                </label>
+                <div class="color-input-group">
+                  <input type="color" id="body-color" value="#f5f7fa" />
+                  <input
+                    type="text"
+                    id="body-color-text"
+                    value="#f5f7fa"
+                    readonly
+                  />
+                </div>
+              </div>
+              <div class="color-picker-item">
+                <label for="card-color">
+                  <i class="fas fa-square"></i> Card Background
+                </label>
+                <div class="color-input-group">
+                  <input type="color" id="card-color" value="#ffffff" />
+                  <input
+                    type="text"
+                    id="card-color-text"
+                    value="#ffffff"
+                    readonly
+                  />
+                </div>
+              </div>
+              <div class="color-picker-item">
+                <label for="accent-color">
+                  <i class="fas fa-star"></i> Accent Color
+                </label>
+                <div class="color-input-group">
+                  <input type="color" id="accent-color" value="#4a90e2" />
+                  <input
+                    type="text"
+                    id="accent-color-text"
+                    value="#4a90e2"
+                    readonly
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div class="theme-presets">
+              <h4><i class="fas fa-swatchbook"></i> Quick Presets</h4>
+              <div class="preset-buttons">
+                <button class="preset-btn" data-preset="default">
+                  <span
+                    class="preset-color"
+                    style="
+                      background: linear-gradient(135deg, #4a90e2, #357abd);
+                    "
+                  ></span>
+                  Default Blue
+                </button>
+                <button class="preset-btn" data-preset="purple">
+                  <span
+                    class="preset-color"
+                    style="
+                      background: linear-gradient(135deg, #667eea, #764ba2);
+                    "
+                  ></span>
+                  Purple
+                </button>
+                <button class="preset-btn" data-preset="green">
+                  <span
+                    class="preset-color"
+                    style="
+                      background: linear-gradient(135deg, #56ab2f, #a8e063);
+                    "
+                  ></span>
+                  Green
+                </button>
+                <button class="preset-btn" data-preset="orange">
+                  <span
+                    class="preset-color"
+                    style="
+                      background: linear-gradient(135deg, #f46b45, #eea849);
+                    "
+                  ></span>
+                  Orange
+                </button>
+                <button class="preset-btn" data-preset="red">
+                  <span
+                    class="preset-color"
+                    style="
+                      background: linear-gradient(135deg, #eb3349, #f45c43);
+                    "
+                  ></span>
+                  Red
+                </button>
+                <button class="preset-btn" data-preset="dark">
+                  <span
+                    class="preset-color"
+                    style="
+                      background: linear-gradient(135deg, #2c3e50, #34495e);
+                    "
+                  ></span>
+                  Dark
+                </button>
+              </div>
+            </div>
+
+            <div class="theme-actions">
+              <button class="btn btn-secondary" id="reset-theme-btn">
+                <i class="fas fa-undo"></i> Reset
+              </button>
+              <button class="btn btn-primary" id="apply-theme-btn">
+                <i class="fas fa-check"></i> Apply Theme
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <div class="main-content">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+          <nav class="nav-menu">
+            <button class="nav-item active" data-section="input">
+              <i class="fas fa-keyboard"></i>
+              <span>Data Input</span>
+            </button>
+            <button class="nav-item" data-section="datesheet">
+              <i class="fas fa-calendar-check"></i>
+              <span>View Datesheet</span>
+            </button>
+            <button class="nav-item" data-section="conflicts">
+              <i class="fas fa-exclamation-triangle"></i>
+              <span>Status & Conflicts</span>
+            </button>
+          </nav>
+        </aside>
+
+        <!-- Content Area -->
+        <main class="content">
+          <!-- Input Section -->
+          <section id="input-section" class="section active">
+            <h2 class="section-title">
+              <i class="fas fa-database"></i>
+              Input Data
+            </h2>
+
+            <!-- Exam Configuration (Date Range & Times) -->
+            <div class="card">
+              <h3 class="card-title">
+                <i class="fas fa-clock"></i> Exam Configuration
+              </h3>
+              <div class="form-group">
+                <label>Date Range</label>
+                <div class="input-group">
+                  <div class="date-input-col">
+                    <label for="start-date" class="label-small"
+                      >Start Date</label
+                    >
+                    <input type="date" id="start-date" />
+                  </div>
+                  <div class="date-input-col">
+                    <label for="end-date" class="label-small">End Date</label>
+                    <input type="date" id="end-date" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Daily Exam Slots</label>
+                <div id="time-slots-container">
+                  <div class="input-tag-group"></div>
+                </div>
+                <div class="input-group">
+                  <div
+                    class="searchable-select"
+                    id="timeslot-select"
+                    style="flex: 1"
+                  >
+                    <input
+                      type="text"
+                      id="new-timeslot"
+                      placeholder="e.g., 09:00 - 12:00"
+                      autocomplete="off"
+                    />
+                  </div>
+                  <button class="btn btn-secondary" id="add-timeslot-btn">
+                    <i class="fas fa-plus"></i> Add
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Departments -->
+            <div class="card">
+              <h3 class="card-title">
+                <i class="fas fa-building"></i> Departments
+              </h3>
+              <div class="form-group">
+                <div class="input-group">
+                  <input
+                    type="text"
+                    id="dept-input"
+                    list="dept-options"
+                    placeholder="Select or Enter Department"
+                  />
+                  <datalist id="dept-options">
+                    <option value="CS – Computer Science"></option>
+                    <option value="SE – Software Engineering"></option>
+                    <option value="BBA – Business Administration"></option>
+                    <option value="PSY – Psychology"></option>
+                    <option value="AF – Accounting & Finance"></option>
+                    <option value="ID – Interior Design"></option>
+                    <option value="ELS – English & Linguistic Studies"></option>
+                    <option
+                      value="DDCA – Digital Design & Computer Arts"
+                    ></option>
+                  </datalist>
+                  <button class="btn btn-secondary" id="add-dept-btn">
+                    <i class="fas fa-plus"></i> Add
+                  </button>
+                </div>
+              </div>
+              <div id="dept-list" class="input-tag-group"></div>
+            </div>
+
+            <!-- Exams / Subjects -->
+            <div class="card">
+              <h3 class="card-title">
+                <i class="fas fa-book"></i> Exams & Courses
+              </h3>
+              <div id="exams-list" class="items-list"></div>
+
+              <div class="form-row">
+                <div class="form-group" style="flex: 2">
+                  <label>Course Name</label>
+                  <input
+                    type="text"
+                    id="course-name"
+                    list="course-options"
+                    placeholder="Select or Enter Course Name"
+                  />
+                  <datalist id="course-options">
+                    <option value="Application of ICT (Lab)"></option>
+                    <option value="Application of ICT (Theory)"></option>
+                    <option value="Artificial Intelligence"></option>
+                    <option value="Basic Mathematics Deficiency-I"></option>
+                    <option value="Basic Mathematics Deficiency-II"></option>
+                    <option
+                      value="Business Communication & Report Writing"
+                    ></option>
+                    <option value="Calculus & Analytical Geometry"></option>
+                    <option value="Civics and Community Engagement"></option>
+                    <option value="Cognitive Psychology"></option>
+                    <option value="Computer Networks"></option>
+                    <option
+                      value="Drawing From Observation & Material"
+                    ></option>
+                    <option value="Environmental Sciences"></option>
+                    <option value="Ethical Issues in Psychology"></option>
+                    <option value="Expository Writing"></option>
+                    <option value="Figure & Perspective Drawing"></option>
+                    <option value="Financial Accounting"></option>
+                    <option value="Fundamentals of Accounting"></option>
+                    <option value="Fundamentals of Drawing"></option>
+                    <option value="Functional English"></option>
+                    <option
+                      value="History of Arts in Ancient Civilization"
+                    ></option>
+                    <option value="Human Resource Management"></option>
+                    <option
+                      value="Ideology and Constitution of Pakistan"
+                    ></option>
+                    <option value="Introduction to Business"></option>
+                    <option value="Introduction to Linguistics"></option>
+                    <option value="Introduction to Literary Studies"></option>
+                    <option value="Introduction to Psychology"></option>
+                    <option value="Islamic Studies"></option>
+                    <option value="Light, Color & Imaging"></option>
+                    <option value="Material & Process"></option>
+                    <option value="Object Oriented Programming (Lab)"></option>
+                    <option
+                      value="Object Oriented Programming (Theory)"
+                    ></option>
+                    <option value="Pakistan Studies"></option>
+                    <option value="Programming Fundamentals (Lab)"></option>
+                    <option value="Programming Fundamentals (Theory)"></option>
+                    <option
+                      value="Quantitative Reasoning (Discrete Structure)"
+                    ></option>
+                    <option value="Quantitative Reasoning-I"></option>
+                    <option value="Social Psychology"></option>
+                    <option value="Understanding of Holy Quran-I"></option>
+                    <option value="Visual Communication-I"></option>
+                  </datalist>
+                </div>
+                <div class="form-group" style="flex: 1">
+                  <label>Course Code</label>
+                  <select id="course-code">
+                    <option value="">Select Code</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group" style="flex: 1">
+                  <label>Departments</label>
+                  <div class="input-group">
+                    <select id="course-dept-select">
+                      <option value="">Select Dept</option>
+                    </select>
+                    <button
+                      class="btn btn-sm btn-secondary"
+                      id="add-exam-dept-btn"
+                    >
+                      Add
+                    </button>
+                  </div>
+                  <div
+                    id="exam-depts-list"
+                    class="input-tag-group"
+                    style="margin-top: 0.5rem"
+                  ></div>
+                </div>
+                <div class="form-group" style="flex: 1">
+                  <label>Student Count</label>
+                  <input
+                    type="number"
+                    id="student-count"
+                    placeholder="e.g., 40"
+                    min="1"
+                  />
+                </div>
+              </div>
+
+              <button
+                class="btn btn-secondary"
+                id="add-exam-btn"
+                style="width: 100%; margin-top: 0.5rem"
+              >
+                <i class="fas fa-plus"></i> Add Exam
+              </button>
+            </div>
+
+            <!-- Invigilators -->
+            <div class="card">
+              <h3 class="card-title">
+                <i class="fas fa-user-tie"></i> Invigilators
+              </h3>
+              <div id="invigilators-list" class="items-list"></div>
+
+              <div class="form-row">
+                <div class="form-group" style="flex: 2">
+                  <label>Name</label>
+                  <input
+                    type="text"
+                    id="invigilator-name"
+                    list="invigilator-options"
+                    placeholder="Select or Enter Invigilator Name"
+                  />
+                  <datalist id="invigilator-options">
+                    <option value="Dr. Amad Ud Din"></option>
+                    <option value="Dr. Abdul Waheed"></option>
+                    <option value="Mr. Muhammad Adil"></option>
+                    <option value="Ms. Khadija Waheed"></option>
+                    <option value="Ms. Aina Merzia"></option>
+                    <option value="Dr. Rubab Tahir"></option>
+                    <option value="Ms. Amna Malik"></option>
+                    <option value="Ms. Farah Nazeer"></option>
+                    <option value="Mr. Muhammad Faran"></option>
+                    <option value="Dr. Aisha Parveen"></option>
+                    <option value="Dr. Aziz Haider"></option>
+                    <option value="Dr. Muhammad Bilal"></option>
+                    <option value="Dr. Saniya Moazzam"></option>
+                    <option value="Dr. Samiya Bashir"></option>
+                    <option value="Mr. Imran Ejaz"></option>
+                    <option value="Dr. Salman Chugtai"></option>
+                    <option value="Ms. Esha Gul"></option>
+                  </datalist>
+                </div>
+                <div class="form-group" style="flex: 1">
+                  <label>Max Duties</label>
+                  <input
+                    type="number"
+                    id="max-duties"
+                    placeholder="e.g., 5"
+                    value="5"
+                    min="1"
+                  />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Available Dates (Optional)</label>
+                <div class="input-group">
+                  <input type="date" id="invigilator-available-date" />
+                  <button
+                    class="btn btn-sm btn-secondary"
+                    id="add-available-date"
+                  >
+                    Add Date
+                  </button>
+                </div>
+                <div
+                  id="available-dates-list"
+                  class="input-tag-group"
+                  style="margin-top: 0.5rem"
+                ></div>
+              </div>
+
+              <button
+                class="btn btn-secondary"
+                id="add-invigilator-btn"
+                style="width: 100%; margin-top: 0.5rem"
+              >
+                <i class="fas fa-plus"></i> Add Invigilator
+              </button>
+            </div>
+
+            <!-- Rooms -->
+            <div class="card">
+              <h3 class="card-title"><i class="fas fa-door-open"></i> Rooms</h3>
+              <div id="rooms-list" class="items-list"></div>
+
+              <div class="form-row">
+                <div class="form-group" style="flex: 2">
+                  <label>Room Name/Number</label>
+                  <input
+                    type="text"
+                    id="room-name"
+                    placeholder="e.g., Room 101"
+                  />
+                </div>
+                <div class="form-group" style="flex: 1">
+                  <label>Capacity</label>
+                  <input
+                    type="number"
+                    id="room-capacity"
+                    placeholder="e.g., 50"
+                    min="1"
+                  />
+                </div>
+              </div>
+
+              <button
+                class="btn btn-secondary"
+                id="add-room-btn"
+                style="width: 100%; margin-top: 0.5rem"
+              >
+                <i class="fas fa-plus"></i> Add Room
+              </button>
+            </div>
+
+            <!-- Generate Button -->
+            <div class="action-bar">
+              <button class="btn btn-primary btn-large" id="generate-btn">
+                <i class="fas fa-magic"></i> Generate Datesheet
+              </button>
+            </div>
+          </section>
+
+          <!-- Datesheet View Section -->
+          <section id="datesheet-section" class="section">
+            <h2 class="section-title">
+              <i class="fas fa-calendar-check"></i>
+              Generated Datesheet
+            </h2>
+
+            <div
+              class="action-bar"
+              style="justify-content: flex-end; margin-bottom: 20px"
+            >
+              <button class="btn btn-secondary" id="export-pdf-btn">
+                <i class="fas fa-file-pdf"></i> PDF
+              </button>
+              <button class="btn btn-secondary" id="export-csv-btn">
+                <i class="fas fa-file-csv"></i> CSV
+              </button>
+              <button class="btn btn-primary" id="regenerate-btn">
+                <i class="fas fa-sync"></i> Regenerate
+              </button>
+            </div>
+
+            <div id="datesheet-container">
+              <!-- Datesheet table will be rendered here -->
+              <div class="empty-state">
+                <i
+                  class="fas fa-calendar-times"
+                  style="
+                    font-size: 3rem;
+                    color: var(--text-light);
+                    margin-bottom: 1rem;
+                  "
+                ></i>
+                <p>No datesheet generated yet.</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- Conflicts Section -->
+          <section id="conflicts-section" class="section">
+            <h2 class="section-title">
+              <i class="fas fa-exclamation-triangle"></i>
+              Status & Conflicts
+            </h2>
+            <div id="conflicts-list">
+              <div class="empty-state">
+                <i
+                  class="fas fa-check-circle"
+                  style="
+                    font-size: 3rem;
+                    color: var(--success-color);
+                    margin-bottom: 1rem;
+                  "
+                ></i>
+                <p>No conflicts detected.</p>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmation-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3><i class="fas fa-question-circle"></i> Confirmation</h3>
+          <button class="close-modal-btn" id="close-modal-btn">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p id="confirmation-message">Are you sure you want to proceed?</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" id="cancel-confirm-btn">
+            Cancel
+          </button>
+          <button class="btn btn-primary" id="confirm-action-btn">
+            Confirm
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="script.js"></script>
+  </body>
+</html>
