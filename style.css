@@ -405,6 +405,32 @@ textarea {
     color: var(--text-color);
     background-color: var(--input-bg);
     transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+    appearance: none;
+}
+
+/* Custom Searchable Select / Dropdown Wrapper */
+.searchable-select {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.searchable-select input,
+.searchable-select select {
+    padding-right: 2.5rem !important;
+}
+
+.searchable-select::after {
+    content: "\f078"; /* fa-chevron-down icon */
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    position: absolute;
+    right: 1rem;
+    pointer-events: none;
+    color: var(--text-light);
+    font-size: 0.8rem;
+    z-index: 5;
 }
 
 input:focus,
