@@ -232,9 +232,16 @@
                     <input
                       type="text"
                       id="new-timeslot"
+                      list="timeslot-options"
                       placeholder="e.g., 09:00 - 12:00"
                       autocomplete="off"
                     />
+                    <datalist id="timeslot-options">
+                      <option value="09:00 - 12:00"></option>
+                      <option value="13:00 - 16:00"></option>
+                      <option value="14:00 - 17:00"></option>
+                      <option value="08:30 - 11:30"></option>
+                    </datalist>
                   </div>
                   <button class="btn btn-secondary" id="add-timeslot-btn">
                     <i class="fas fa-plus"></i> Add
@@ -250,24 +257,28 @@
               </h3>
               <div class="form-group">
                 <div class="input-group">
-                  <input
-                    type="text"
-                    id="dept-input"
-                    list="dept-options"
-                    placeholder="Select or Enter Department"
-                  />
-                  <datalist id="dept-options">
-                    <option value="CS – Computer Science"></option>
-                    <option value="SE – Software Engineering"></option>
-                    <option value="BBA – Business Administration"></option>
-                    <option value="PSY – Psychology"></option>
-                    <option value="AF – Accounting & Finance"></option>
-                    <option value="ID – Interior Design"></option>
-                    <option value="ELS – English & Linguistic Studies"></option>
-                    <option
-                      value="DDCA – Digital Design & Computer Arts"
-                    ></option>
-                  </datalist>
+                  <div class="searchable-select" style="flex: 1">
+                    <input
+                      type="text"
+                      id="dept-input"
+                      list="dept-options"
+                      placeholder="Select or Enter Department"
+                    />
+                    <datalist id="dept-options">
+                      <option value="CS – Computer Science"></option>
+                      <option value="SE – Software Engineering"></option>
+                      <option value="BBA – Business Administration"></option>
+                      <option value="PSY – Psychology"></option>
+                      <option value="AF – Accounting & Finance"></option>
+                      <option value="ID – Interior Design"></option>
+                      <option
+                        value="ELS – English & Linguistic Studies"
+                      ></option>
+                      <option
+                        value="DDCA – Digital Design & Computer Arts"
+                      ></option>
+                    </datalist>
+                  </div>
                   <button class="btn btn-secondary" id="add-dept-btn">
                     <i class="fas fa-plus"></i> Add
                   </button>
@@ -286,71 +297,81 @@
               <div class="form-row">
                 <div class="form-group" style="flex: 2">
                   <label>Course Name</label>
-                  <input
-                    type="text"
-                    id="course-name"
-                    list="course-options"
-                    placeholder="Select or Enter Course Name"
-                  />
-                  <datalist id="course-options">
-                    <option value="Application of ICT (Lab)"></option>
-                    <option value="Application of ICT (Theory)"></option>
-                    <option value="Artificial Intelligence"></option>
-                    <option value="Basic Mathematics Deficiency-I"></option>
-                    <option value="Basic Mathematics Deficiency-II"></option>
-                    <option
-                      value="Business Communication & Report Writing"
-                    ></option>
-                    <option value="Calculus & Analytical Geometry"></option>
-                    <option value="Civics and Community Engagement"></option>
-                    <option value="Cognitive Psychology"></option>
-                    <option value="Computer Networks"></option>
-                    <option
-                      value="Drawing From Observation & Material"
-                    ></option>
-                    <option value="Environmental Sciences"></option>
-                    <option value="Ethical Issues in Psychology"></option>
-                    <option value="Expository Writing"></option>
-                    <option value="Figure & Perspective Drawing"></option>
-                    <option value="Financial Accounting"></option>
-                    <option value="Fundamentals of Accounting"></option>
-                    <option value="Fundamentals of Drawing"></option>
-                    <option value="Functional English"></option>
-                    <option
-                      value="History of Arts in Ancient Civilization"
-                    ></option>
-                    <option value="Human Resource Management"></option>
-                    <option
-                      value="Ideology and Constitution of Pakistan"
-                    ></option>
-                    <option value="Introduction to Business"></option>
-                    <option value="Introduction to Linguistics"></option>
-                    <option value="Introduction to Literary Studies"></option>
-                    <option value="Introduction to Psychology"></option>
-                    <option value="Islamic Studies"></option>
-                    <option value="Light, Color & Imaging"></option>
-                    <option value="Material & Process"></option>
-                    <option value="Object Oriented Programming (Lab)"></option>
-                    <option
-                      value="Object Oriented Programming (Theory)"
-                    ></option>
-                    <option value="Pakistan Studies"></option>
-                    <option value="Programming Fundamentals (Lab)"></option>
-                    <option value="Programming Fundamentals (Theory)"></option>
-                    <option
-                      value="Quantitative Reasoning (Discrete Structure)"
-                    ></option>
-                    <option value="Quantitative Reasoning-I"></option>
-                    <option value="Social Psychology"></option>
-                    <option value="Understanding of Holy Quran-I"></option>
-                    <option value="Visual Communication-I"></option>
-                  </datalist>
+                  <div class="searchable-select">
+                    <input
+                      type="text"
+                      id="course-name"
+                      list="course-options"
+                      placeholder="Select or Enter Course Name"
+                    />
+                    <datalist id="course-options">
+                      <option value="Application of ICT (Lab)"></option>
+                      <option value="Application of ICT (Theory)"></option>
+                      <option value="Artificial Intelligence"></option>
+                      <option value="Basic Mathematics Deficiency-I"></option>
+                      <option value="Basic Mathematics Deficiency-II"></option>
+                      <option
+                        value="Business Communication & Report Writing"
+                      ></option>
+                      <option value="Calculus & Analytical Geometry"></option>
+                      <option value="Civics and Community Engagement"></option>
+                      <option value="Cognitive Psychology"></option>
+                      <option value="Computer Networks"></option>
+                      <option
+                        value="Drawing From Observation & Material"
+                      ></option>
+                      <option value="Environmental Sciences"></option>
+                      <option value="Ethical Issues in Psychology"></option>
+                      <option value="Expository Writing"></option>
+                      <option value="Figure & Perspective Drawing"></option>
+                      <option value="Financial Accounting"></option>
+                      <option value="Fundamentals of Accounting"></option>
+                      <option value="Fundamentals of Drawing"></option>
+                      <option value="Functional English"></option>
+                      <option
+                        value="History of Arts in Ancient Civilization"
+                      ></option>
+                      <option value="Human Resource Management"></option>
+                      <option
+                        value="Ideology and Constitution of Pakistan"
+                      ></option>
+                      <option value="Introduction to Business"></option>
+                      <option value="Introduction to Linguistics"></option>
+                      <option
+                        value="Introduction to Literary Studies"
+                      ></option>
+                      <option value="Introduction to Psychology"></option>
+                      <option value="Islamic Studies"></option>
+                      <option value="Light, Color & Imaging"></option>
+                      <option value="Material & Process"></option>
+                      <option
+                        value="Object Oriented Programming (Lab)"
+                      ></option>
+                      <option
+                        value="Object Oriented Programming (Theory)"
+                      ></option>
+                      <option value="Pakistan Studies"></option>
+                      <option value="Programming Fundamentals (Lab)"></option>
+                      <option
+                        value="Programming Fundamentals (Theory)"
+                      ></option>
+                      <option
+                        value="Quantitative Reasoning (Discrete Structure)"
+                      ></option>
+                      <option value="Quantitative Reasoning-I"></option>
+                      <option value="Social Psychology"></option>
+                      <option value="Understanding of Holy Quran-I"></option>
+                      <option value="Visual Communication-I"></option>
+                    </datalist>
+                  </div>
                 </div>
                 <div class="form-group" style="flex: 1">
                   <label>Course Code</label>
-                  <select id="course-code">
-                    <option value="">Select Code</option>
-                  </select>
+                  <div class="searchable-select">
+                    <select id="course-code">
+                      <option value="">Select Code</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
@@ -358,9 +379,11 @@
                 <div class="form-group" style="flex: 1">
                   <label>Departments</label>
                   <div class="input-group">
-                    <select id="course-dept-select">
-                      <option value="">Select Dept</option>
-                    </select>
+                    <div class="searchable-select" style="flex: 1">
+                      <select id="course-dept-select">
+                        <option value="">Select Dept</option>
+                      </select>
+                    </div>
                     <button
                       class="btn btn-sm btn-secondary"
                       id="add-exam-dept-btn"
@@ -404,31 +427,33 @@
               <div class="form-row">
                 <div class="form-group" style="flex: 2">
                   <label>Name</label>
-                  <input
-                    type="text"
-                    id="invigilator-name"
-                    list="invigilator-options"
-                    placeholder="Select or Enter Invigilator Name"
-                  />
-                  <datalist id="invigilator-options">
-                    <option value="Dr. Amad Ud Din"></option>
-                    <option value="Dr. Abdul Waheed"></option>
-                    <option value="Mr. Muhammad Adil"></option>
-                    <option value="Ms. Khadija Waheed"></option>
-                    <option value="Ms. Aina Merzia"></option>
-                    <option value="Dr. Rubab Tahir"></option>
-                    <option value="Ms. Amna Malik"></option>
-                    <option value="Ms. Farah Nazeer"></option>
-                    <option value="Mr. Muhammad Faran"></option>
-                    <option value="Dr. Aisha Parveen"></option>
-                    <option value="Dr. Aziz Haider"></option>
-                    <option value="Dr. Muhammad Bilal"></option>
-                    <option value="Dr. Saniya Moazzam"></option>
-                    <option value="Dr. Samiya Bashir"></option>
-                    <option value="Mr. Imran Ejaz"></option>
-                    <option value="Dr. Salman Chugtai"></option>
-                    <option value="Ms. Esha Gul"></option>
-                  </datalist>
+                  <div class="searchable-select">
+                    <input
+                      type="text"
+                      id="invigilator-name"
+                      list="invigilator-options"
+                      placeholder="Select or Enter Invigilator Name"
+                    />
+                    <datalist id="invigilator-options">
+                      <option value="Dr. Amad Ud Din"></option>
+                      <option value="Dr. Abdul Waheed"></option>
+                      <option value="Mr. Muhammad Adil"></option>
+                      <option value="Ms. Khadija Waheed"></option>
+                      <option value="Ms. Aina Merzia"></option>
+                      <option value="Dr. Rubab Tahir"></option>
+                      <option value="Ms. Amna Malik"></option>
+                      <option value="Ms. Farah Nazeer"></option>
+                      <option value="Mr. Muhammad Faran"></option>
+                      <option value="Dr. Aisha Parveen"></option>
+                      <option value="Dr. Aziz Haider"></option>
+                      <option value="Dr. Muhammad Bilal"></option>
+                      <option value="Dr. Saniya Moazzam"></option>
+                      <option value="Dr. Samiya Bashir"></option>
+                      <option value="Mr. Imran Ejaz"></option>
+                      <option value="Dr. Salman Chugtai"></option>
+                      <option value="Ms. Esha Gul"></option>
+                    </datalist>
+                  </div>
                 </div>
                 <div class="form-group" style="flex: 1">
                   <label>Max Duties</label>
