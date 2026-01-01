@@ -21,10 +21,10 @@
             </button>
             <div class="logo">
               <i class="fas fa-calendar-alt"></i>
-              <h1>Datesheet Generator</h1>
+              <h1>University Datesheet Generator</h1>
             </div>
           </div>
-          <p class="subtitle">Automated Exam Scheduling</p>
+          <p class="subtitle">Tech & Innovative Society</p>
           <!-- Theme Toggle Button -->
           <button class="theme-toggle-btn" id="theme-toggle-btn">
             <i class="fas fa-palette"></i> <span>Theme</span>
@@ -257,12 +257,21 @@
               <h3 class="card-title">
                 <i class="fas fa-building"></i> Departments & Semesters
               </h3>
+              <!-- First Row: Semester Setting -->
               <div class="form-row">
                 <div class="form-group" style="flex: 1">
                   <label for="total-semesters">Total Semesters</label>
-                  <input type="number" id="total-semesters" placeholder="e.g., 8" min="1" value="8" />
+                  <div class="input-group">
+                    <input type="number" id="total-semesters" placeholder="e.g., 8" min="1" value="3" />
+                    <button class="btn btn-primary" id="apply-semesters-btn">
+                      <i class="fas fa-check"></i> Apply
+                    </button>
+                  </div>
                 </div>
-                <div class="form-group" style="flex: 2">
+              </div>
+              <!-- Second Row: Department Selection (Initially Hidden or separated) -->
+              <div class="form-row hidden" id="dept-input-row">
+                <div class="form-group" style="flex: 1">
                   <label>Add Department</label>
                   <div class="input-group">
                     <div class="searchable-select" style="flex: 1">
@@ -293,7 +302,7 @@
                   </div>
                 </div>
               </div>
-              <div id="dept-list" class="input-tag-group"></div>
+              <div id="dept-list" class="items-list"></div>
             </div>
 
             <!-- Exams / Subjects -->
@@ -630,7 +639,7 @@
         <div class="modal-body">
           <div class="form-group">
             <label for="edit-semester">Semester</label>
-            <input type="number" id="edit-semester" min="1" />
+            <select id="edit-semester"></select>
           </div>
           <div class="form-group">
             <label for="edit-course-code">Course Code</label>
