@@ -549,10 +549,7 @@
               Generated Datesheet
             </h2>
 
-            <div
-              class="action-bar"
-              style="justify-content: flex-end; margin-bottom: 20px"
-            >
+            <div class="action-bar justify-end" style="margin-bottom: 20px">
               <button class="btn btn-secondary" id="export-pdf-btn">
                 <i class="fas fa-file-pdf"></i> PDF
               </button>
@@ -562,6 +559,12 @@
               <button class="btn btn-primary" id="regenerate-btn">
                 <i class="fas fa-sync"></i> Regenerate
               </button>
+              <div class="import-wrapper">
+                <input type="file" id="csv-import-input" accept=".csv, .xlsx, .xls" style="display: none;" />
+                <button class="btn btn-secondary" id="import-csv-btn">
+                  <i class="fas fa-file-import"></i> Import CSV/Excel
+                </button>
+              </div>
             </div>
 
             <div id="datesheet-container">
@@ -670,6 +673,8 @@
     </div>
 
     <!-- Scripts -->
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <script src="script.js"></script>
 
