@@ -513,6 +513,25 @@ body {
     .input-group .btn {
         width: 100%;
     }
+    
+    /* Grid layout for action-bar buttons (2 per row) */
+    #datesheet-section .action-bar {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+    
+    #datesheet-section .action-bar .btn,
+    #datesheet-section .action-bar .import-wrapper,
+    #datesheet-section .action-bar .import-wrapper .btn {
+        width: 100%;
+        margin: 0;
+    }
+
+    /* If there's an odd button, let it span full width - or just keep it 2x2 */
+    #datesheet-section .action-bar .import-wrapper {
+        grid-column: span 1; /* Keep it in the grid */
+    }
 }
 
 /* Standardized Input Styling */
