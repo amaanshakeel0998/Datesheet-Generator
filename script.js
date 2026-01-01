@@ -383,7 +383,15 @@ function setupEventListeners() {
     document.getElementById('export-pdf-btn').addEventListener('click', exportPDF);
     document.getElementById('export-csv-btn').addEventListener('click', exportCSV);
     
-    // 8. Modal
+    // 8. CSV/Excel Import
+    const importBtn = document.getElementById('import-csv-btn');
+    const importInput = document.getElementById('csv-import-input');
+    if (importBtn && importInput) {
+        importBtn.addEventListener('click', () => importInput.click());
+        importInput.addEventListener('change', handleFileImport);
+    }
+    
+    // 9. Modal
     document.getElementById('close-modal-btn').addEventListener('click', () => {
         document.getElementById('confirmation-modal').classList.remove('active');
     });
@@ -484,17 +492,38 @@ function addTimeSlot() {
     if(val) {
         showConfirmation(`Add time slot "${val}"?`, () => {
             state.config.timeSlots.push(val);
-            renderTags('time-slots-container', state.config.timeSlots, (idx) => {
-                // Deletion also needs confirmation? Maybe not for deleting tags, 
-                // but let's keep it simple for now. 
-                // If user asked "confirmation popup for EVERY entry", maybe deletions too.
-                // But typically entry means input.
-                state.config.timeSlots.splice(idx, 1);
-                renderTags('time-slots-container', state.config.timeSlots, null); // Re-render
-            });
+            renderTimeSlots();
             input.value = '';
         });
     }
+}
+
+function renderTimeSlots() {
+    const container = document.querySelector('#time-slots-container .input-tag-group');
+    if (!container) return;
+    
+    // We can't use renderTags directly if it clears the parent which contains the .input-tag-group
+    // But renderTags takes an ID. Let's make sure it targets the right element.
+    renderTagsOnElement(container, state.config.timeSlots, (idx) => {
+        state.config.timeSlots.splice(idx, 1);
+        renderTimeSlots();
+    });
+}
+
+function renderTagsOnElement(element, items, removeCallback) {
+    element.innerHTML = '';
+    items.forEach((item, idx) => {
+        const tag = document.createElement('div');
+        tag.className = 'tag';
+        tag.innerHTML = `<span>${item}</span>`;
+        if(removeCallback) {
+            const close = document.createElement('i');
+            close.className = 'fas fa-times';
+            close.onclick = () => removeCallback(idx);
+            tag.appendChild(close);
+        }
+        element.appendChild(tag);
+    });
 }
 
 // Departments
@@ -751,19 +780,8 @@ window.removeRoom = function(idx) {
 // Generic Tag Renderer
 function renderTags(containerId, items, removeCallback) {
     const container = document.getElementById(containerId);
-    container.innerHTML = '';
-    items.forEach((item, idx) => {
-        const tag = document.createElement('div');
-        tag.className = 'tag';
-        tag.innerHTML = `<span>${item}</span>`;
-        if(removeCallback) {
-            const close = document.createElement('i');
-            close.className = 'fas fa-times';
-            close.onclick = () => removeCallback(idx);
-            tag.appendChild(close);
-        }
-        container.appendChild(tag);
-    });
+    if (!container) return;
+    renderTagsOnElement(container, items, removeCallback);
 }
 
 
@@ -1278,5 +1296,268 @@ window.openAddExamModal = function(date, slot) {
     document.getElementById('edit-modal').classList.add('active');
 }
 
-// Modal Buttons
+// ==========================================
+// File Import Logic (CSV/Excel)
+// ==========================================
 
+function handleFileImport(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const fileName = file.name.toLowerCase();
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+        try {
+            let data = [];
+            
+            if (fileName.endsWith('.csv')) {
+                const text = e.target.result;
+                data = parseCSV(text);
+            } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+                const binaryStr = e.target.result;
+                const workbook = XLSX.read(binaryStr, { type: 'binary', cellDates: true });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                // Convert to array of arrays (like parseCSV does)
+                data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            }
+
+            if (data.length < 2) {
+                alert('The file seems to be empty or invalid.');
+                return;
+            }
+
+            processImportedData(data, event);
+
+        } catch (error) {
+            console.error('File Import Error:', error);
+            alert('An error occurred while parsing the file. Please ensure it is a valid CSV or Excel file.');
+        }
+    };
+
+    if (fileName.endsWith('.csv')) {
+        reader.readAsText(file);
+    } else {
+        reader.readAsBinaryString(file);
+    }
+}
+
+function processImportedData(data, event) {
+    // 1. Find Header Row (Scan first 20 rows for keywords)
+    let headerRowIndex = -1;
+    const keywords = ['date', 'slot', 'code', 'subject', 'course'];
+    
+    for (let i = 0; i < Math.min(data.length, 20); i++) {
+        const row = data[i].map(cell => cell ? cell.toString().toLowerCase().trim() : '');
+        if (keywords.some(k => row.some(cell => cell.includes(k)))) {
+            headerRowIndex = i;
+            break;
+        }
+    }
+
+    if (headerRowIndex === -1) {
+        alert('Could not detect headers. Please ensure your file has columns like Date, Slot, and Course Code.');
+        return;
+    }
+
+    const headers = data[headerRowIndex].map(h => (h ? h.toString().trim().toLowerCase() : ''));
+    const rows = data.slice(headerRowIndex + 1);
+
+    const findCol = (aliases) => {
+        for (let alias of aliases) {
+            const index = headers.findIndex(h => h && h.includes(alias.toLowerCase()));
+            if (index !== -1) return index;
+        }
+        return -1;
+    };
+
+    const colMap = {
+        date: findCol(['date', 'day']),
+        slot: findCol(['slot', 'time', 'session']),
+        code: findCol(['code', 'subject code', 'cid', 'id']),
+        name: findCol(['name', 'subject', 'course', 'title']),
+        semester: findCol(['semester', 'sem', 'level']),
+        depts: findCol(['dept', 'department', 'program']),
+        room: findCol(['room', 'venue', 'room no']),
+        invigilator: findCol(['invigilator', 'teacher', 'supervisor', 'staff'])
+    };
+
+    const importedExams = [];
+    const foundDates = new Set();
+    const foundSlots = new Set();
+    const foundDepts = new Set();
+    const foundRooms = new Set();
+    const foundInvigilators = new Set();
+    let maxSemester = 0;
+
+    rows.forEach((row, rowIndex) => {
+        if (!row || row.length === 0) return;
+
+        // Skip if date is missing completely
+        let dateVal = colMap.date !== -1 ? row[colMap.date] : null;
+        if (!dateVal) {
+            console.warn(`Row ${rowIndex + headerRowIndex + 2}: Missing date, skipping.`);
+            return;
+        }
+
+        // --- Improved Robust Date Parsing ---
+        let finalDate = '';
+        if (dateVal instanceof Date) {
+            finalDate = dateVal.toISOString().split('T')[0];
+        } else {
+            const rawDate = dateVal.toString().trim();
+            if (!rawDate) return;
+
+            const d = new Date(rawDate);
+            if (!isNaN(d.getTime())) {
+                finalDate = d.toISOString().split('T')[0];
+            } else {
+                // Try DD-MM-YYYY or similar
+                const match = rawDate.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
+                if (match) {
+                    const day = match[1].padStart(2, '0');
+                    const month = match[2].padStart(2, '0');
+                    const year = match[3].length === 2 ? '20' + match[3] : match[3];
+                    finalDate = `${year}-${month}-${day}`;
+                }
+            }
+        }
+
+        if (!finalDate) {
+            console.warn(`Row ${rowIndex + headerRowIndex + 2}: Invalid date format "${dateVal}", skipping.`);
+            return;
+        }
+
+        // --- Flexible Data Extraction ---
+        const semRaw = colMap.semester !== -1 && row[colMap.semester] ? row[colMap.semester].toString().trim() : '1';
+        const semNum = parseInt(semRaw.replace(/\D/g,'')) || 1;
+        if (semNum > maxSemester) maxSemester = semNum;
+
+        const deptsStr = colMap.depts !== -1 && row[colMap.depts] ? row[colMap.depts].toString().trim() : '';
+        const deptsList = deptsStr ? deptsStr.split(/[,;|]/).map(d => d.trim()).filter(d => d) : [];
+        deptsList.forEach(d => foundDepts.add(d));
+
+        const roomVal = colMap.room !== -1 && row[colMap.room] ? row[colMap.room].toString().trim() : 'N/A';
+        if (roomVal && roomVal !== 'N/A') foundRooms.add(roomVal);
+
+        const invVal = colMap.invigilator !== -1 && row[colMap.invigilator] ? row[colMap.invigilator].toString().trim() : 'N/A';
+        if (invVal && invVal !== 'N/A') foundInvigilators.add(invVal);
+
+        const exam = {
+            date: finalDate,
+            time: colMap.slot !== -1 && row[colMap.slot] ? row[colMap.slot].toString().trim() : '09:00 - 12:00',
+            courseCode: colMap.code !== -1 && row[colMap.code] ? row[colMap.code].toString().trim() : `EXAM-${rowIndex + 1}`,
+            courseName: colMap.name !== -1 && row[colMap.name] ? row[colMap.name].toString().trim() : 'Untitled Subject',
+            semester: semNum.toString(),
+            depts: deptsList,
+            room: roomVal,
+            invigilator: invVal
+        };
+
+        importedExams.push(exam);
+        foundDates.add(exam.date);
+        foundSlots.add(exam.time);
+    });
+
+    if (importedExams.length === 0) {
+        alert('No valid exams found. Please ensure your file has valid dates and data.');
+        return;
+    }
+
+    showConfirmation(`Identified ${importedExams.length} exams. Update datesheet?`, () => {
+        state.generatedDatesheet = importedExams;
+        
+        // Also sync state.exams so they show up in the sidebar/added exams list
+        state.exams = importedExams.map(ie => ({
+            code: ie.courseCode,
+            name: ie.courseName,
+            semester: ie.semester,
+            depts: ie.depts
+        }));
+        
+        // Configuration Updates
+        const sortedDates = [...foundDates].sort();
+        state.config.startDate = sortedDates[0];
+        state.config.endDate = sortedDates[sortedDates.length - 1];
+        state.config.timeSlots = [...foundSlots];
+        
+        // Ensure totalSemesters is at least 8 or the max found
+        state.config.totalSemesters = Math.max(8, maxSemester);
+
+        // Sync auxiliary lists (Append new, keep existing)
+        state.departments = [...new Set([...state.departments, ...foundDepts])];
+        
+        const existingRoomNames = new Set(state.rooms.map(r => r.name));
+        foundRooms.forEach(name => {
+            if (!existingRoomNames.has(name)) {
+                state.rooms.push({ id: Date.now() + Math.random(), name });
+            }
+        });
+
+        const existingInvNames = new Set(state.invigilators.map(i => i.name));
+        foundInvigilators.forEach(name => {
+            if (!existingInvNames.has(name)) {
+                state.invigilators.push({ 
+                    id: Date.now() + Math.random(), 
+                    name, 
+                    maxDuties: 5, 
+                    availableDates: [], 
+                    assignedDuties: 0 
+                });
+            }
+        });
+
+        // UI Refresh
+        document.getElementById('start-date').value = state.config.startDate;
+        document.getElementById('end-date').value = state.config.endDate;
+        document.getElementById('total-semesters').value = state.config.totalSemesters;
+        
+        renderTimeSlots();
+        renderDeptList();
+        updateDeptSelect();
+        renderRoomsList();
+        renderInvigilatorsList();
+        renderExamsList(); // Added this to refresh the exams list UI
+        
+        // Update semester dropdowns correctly
+        const totalInput = document.getElementById('total-semesters');
+        if (totalInput) {
+            const applyBtn = document.getElementById('apply-semesters-btn');
+            if (applyBtn) applyBtn.click();
+        }
+
+        // View Transition
+        const datesheetNavItem = document.querySelector('.nav-item[data-section="datesheet"]');
+        if (datesheetNavItem) datesheetNavItem.click();
+        
+        renderDatesheet();
+        renderConflicts();
+        if (event) event.target.value = '';
+        console.log(`✅ Complex Import: ${importedExams.length} rows processed.`);
+    });
+}
+
+function parseCSV(text) {
+    const lines = text.split(/\r?\n/);
+    return lines.filter(l => l.trim()).map(line => {
+        const result = [];
+        let cur = '';
+        let inQuote = false;
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            if (char === '"') {
+                inQuote = !inQuote;
+            } else if (char === ',' && !inQuote) {
+                result.push(cur);
+                cur = '';
+            } else {
+                cur += char;
+            }
+        }
+        result.push(cur);
+        return result;
+    });
+}
+
+// Modal Buttons
