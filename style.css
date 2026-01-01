@@ -627,6 +627,18 @@ input[type="date"] {
     margin-top: 1.5rem;
 }
 
+/* Action Bar for Buttons */
+.action-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.justify-end {
+    justify-content: flex-end;
+}
+
 .btn i {
     font-size: 1.1em;
 }
@@ -1237,3 +1249,4 @@ input[type="date"] {
     outline: 2px dashed var(--primary-color);
     background: var(--hover-bg) !important;
 }
+
