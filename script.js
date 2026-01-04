@@ -1244,21 +1244,28 @@ function renderDatesheet() {
 
     dates.forEach(date => {
         const dateObj = new Date(date);
+        const isSunday = dateObj.getDay() === 0;
         const dateStr = dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
         
-        html += `<tr><td>${dateStr}</td>`;
+        const rowClass = isSunday ? 'sunday-row' : '';
+        html += `<tr class="${rowClass}"><td>${dateStr}</td>`;
         
         slots.forEach(slot => {
             const entries = state.generatedDatesheet.filter(e => e.date === date && e.time === slot);
             const cellAttrs = `data-date="${date}" data-slot="${slot}"`;
+            const cellClass = `datesheet-cell ${isSunday ? 'sunday-cell' : 'droptarget'}`;
             
-            html += `<td class="datesheet-cell droptarget" ${cellAttrs}>`;
+            html += `<td class="${cellClass}" ${cellAttrs}>`;
             
             entries.forEach(entry => {
                 const idx = state.generatedDatesheet.indexOf(entry);
+                const isDraggable = !isSunday;
+                const clickHandler = isSunday ? '' : `onclick="event.stopPropagation(); editScheduledExam(${idx})"`;
+                const deleteBtn = isSunday ? '' : `<button class="block-delete-btn" onclick="event.stopPropagation(); deleteScheduledExam(${idx})"><i class="fas fa-times"></i></button>`;
+
                 html += `
-                    <div class="exam-block" draggable="true" data-index="${idx}" onclick="event.stopPropagation(); editScheduledExam(${idx})">
-                        <button class="block-delete-btn" onclick="event.stopPropagation(); deleteScheduledExam(${idx})"><i class="fas fa-times"></i></button>
+                    <div class="exam-block" draggable="${isDraggable}" data-index="${idx}" ${clickHandler}>
+                        ${deleteBtn}
                         <div class="block-code">${entry.courseCode} (S${entry.semester})</div>
                         <div class="block-name">${entry.courseName}</div>
                         <div class="block-meta">
