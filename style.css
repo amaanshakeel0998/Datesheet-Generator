@@ -1168,6 +1168,34 @@ input[type="date"] {
     background: var(--hover-bg) !important;
 }
 
+/* Sunday Styling */
+.sunday-row td {
+    background-color: rgba(217, 83, 79, 0.08) !important;
+    color: var(--danger-color);
+}
+
+.sunday-row td:first-child {
+    background-color: rgba(217, 83, 79, 0.15) !important;
+    border-right: 2px solid var(--danger-color);
+}
+
+.sunday-cell {
+    cursor: not-allowed !important;
+    position: relative;
+}
+
+.sunday-cell::after {
+    content: 'OFF';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.75rem;
+    font-weight: 800;
+    opacity: 0.2;
+    letter-spacing: 2px;
+}
+
 /* Draggable Block */
 .exam-block {
     border: 1px solid var(--border-color);
