@@ -1,4 +1,3 @@
-
 // ==========================================
 // Global State
 // ==========================================
@@ -6,7 +5,7 @@ const state = {
     departments: [],
     exams: [],
     invigilators: [],
-    rooms: [],
+    students: [],
     config: {
         startDate: null,
         endDate: null,
@@ -14,7 +13,9 @@ const state = {
         totalSemesters: 3
     },
     generatedDatesheet: [],
-    conflicts: []
+    conflicts: [],
+    studentConflicts: [],
+    solvedConflicts: []
 };
 
 // Course mappings for dropdown and auto-selection
@@ -25,7 +26,8 @@ const courseMappings = [
     { code: "GEN-103", name: "Quantitative Reasoning – I" },
     { code: "GEN-204", name: "Quantitative Reasoning – II" },
     { code: "CS-103", name: "Quantitative Reasoning (Discrete Structure)" },
-    { code: "CS-111 / CL-111", name: "Programming Fundamentals (Lab)" },
+    { code: "CL-111", name: "Programming Fundamentals (Lab)" },
+    { code: "CS-111", name: "Programming Fundamentals (Theory)" },
     { code: "CS-112", name: "Object Oriented Programming (OOP)" },
     { code: "GEN-107", name: "Functional English" },
     { code: "GEN-208", name: "Expository Writing" },
@@ -65,6 +67,7 @@ const semesterCourseData = {
             "Ideology and Constitution of Pakistan",
             "Functional English",
             "Programming Fundamentals (Lab)",
+            "Programming Fundamentals (Theory)",
             "Calculus & Analytical Geometry",
             "Basic Mathematics-I"
         ],
@@ -74,6 +77,7 @@ const semesterCourseData = {
             "Ideology and Constitution of Pakistan",
             "Functional English",
             "Programming Fundamentals (Lab)",
+            "Programming Fundamentals (Theory)",
             "Calculus & Analytical Geometry",
             "Basic Mathematics-I"
         ],
@@ -238,6 +242,7 @@ document.addEventListener('DOMContentLoaded', function() {
 function initializeSemesterDropdown() {
     const select = document.getElementById('course-semester');
     const editSelect = document.getElementById('edit-semester');
+    const studentSelect = document.getElementById('student-semester');
     const totalInput = document.getElementById('total-semesters');
     const applyBtn = document.getElementById('apply-semesters-btn');
     const deptRow = document.getElementById('dept-input-row');
@@ -262,6 +267,7 @@ function initializeSemesterDropdown() {
         const optionsHtml = options.join('');
         select.innerHTML = optionsHtml;
         if (editSelect) editSelect.innerHTML = optionsHtml;
+        if (studentSelect) studentSelect.innerHTML = optionsHtml;
         
         // Show department row
         if (deptRow) {
@@ -474,17 +480,23 @@ function setupNavigation() {
     // Mobile Menu Toggle
     const menuToggle = document.getElementById('mobile-menu-toggle');
     const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('mobile-overlay');
     
-    if(menuToggle && sidebar) {
-        menuToggle.addEventListener('click', (e) => {
-            e.stopPropagation();
+    if(menuToggle && sidebar && overlay) {
+        const toggleMenu = (e) => {
+            if (e) e.stopPropagation();
             sidebar.classList.toggle('active');
-        });
+            overlay.classList.toggle('active');
+        };
+
+        menuToggle.addEventListener('click', toggleMenu);
+        overlay.addEventListener('click', toggleMenu);
 
         // Close menu when clicking outside
         document.addEventListener('click', (e) => {
             if(sidebar.classList.contains('active') && !sidebar.contains(e.target) && e.target !== menuToggle) {
                 sidebar.classList.remove('active');
+                overlay.classList.remove('active');
             }
         });
     }
@@ -499,7 +511,10 @@ function setupNavigation() {
             document.getElementById(sectionId).classList.add('active');
 
             // Close mobile menu after selection
-            if(sidebar) sidebar.classList.remove('active');
+            if(sidebar) {
+                sidebar.classList.remove('active');
+                overlay?.classList.remove('active');
+            }
         });
     });
 }
@@ -522,9 +537,18 @@ function setupEventListeners() {
     document.getElementById('add-invigilator-btn').addEventListener('click', addInvigilator);
     document.getElementById('add-available-date').addEventListener('click', addAvailableDateTemp);
 
-    // 5. Rooms
-    document.getElementById('add-room-btn').addEventListener('click', addRoom);
-
+    // 5. Students & Enrollments
+    const studentCsvBtn = document.getElementById('student-csv-upload-btn');
+    const studentCsvInput = document.getElementById('student-csv-input');
+    if (studentCsvBtn && studentCsvInput) {
+        studentCsvBtn.addEventListener('click', () => studentCsvInput.click());
+        studentCsvInput.addEventListener('change', handleStudentCSVUpload);
+    }
+    document.getElementById('add-student-course-btn')?.addEventListener('click', addStudentCourseTemp);
+    document.getElementById('add-student-btn')?.addEventListener('click', addStudent);
+    document.getElementById('student-semester')?.addEventListener('change', handleStudentSemesterChange);
+    document.getElementById('clear-all-students-btn')?.addEventListener('click', clearAllStudents);
+    
     // 6. Generate
     document.getElementById('generate-btn').addEventListener('click', generateDatesheet);
     document.getElementById('regenerate-btn').addEventListener('click', generateDatesheet);
@@ -578,8 +602,24 @@ function setupEventListeners() {
     });
 
     document.getElementById('download-pdf-btn')?.addEventListener('click', () => {
-        // This will be handled by the specialized export function
-        processPDFDownload();
+        document.getElementById('pdf-modal').classList.remove('active');
+        document.getElementById('pdf-type-modal').classList.add('active');
+    });
+
+    document.getElementById('close-pdf-type-modal')?.addEventListener('click', () => {
+        document.getElementById('pdf-type-modal').classList.remove('active');
+    });
+
+    document.getElementById('cancel-pdf-type-btn')?.addEventListener('click', () => {
+        document.getElementById('pdf-type-modal').classList.remove('active');
+    });
+
+    document.getElementById('office-copy-btn')?.addEventListener('click', () => {
+        processPDFDownload('office');
+    });
+
+    document.getElementById('student-copy-btn')?.addEventListener('click', () => {
+        processPDFDownload('student');
     });
 
     document.getElementById('cancel-edit-btn')?.addEventListener('click', () => {
@@ -591,7 +631,6 @@ function setupEventListeners() {
         const courseCode = document.getElementById('edit-course-code').value;
         const courseName = document.getElementById('edit-course-name').value;
         const depts = document.getElementById('edit-depts').value.split(',').map(d => d.trim()).filter(d => d !== '');
-        const room = document.getElementById('edit-room').value;
         const invigilator = document.getElementById('edit-invigilator').value;
         
         if (!semester || !courseCode || !courseName) {
@@ -612,7 +651,6 @@ function setupEventListeners() {
                 courseCode,
                 courseName,
                 depts,
-                room,
                 invigilator
             });
         } else {
@@ -622,7 +660,6 @@ function setupEventListeners() {
             exam.courseCode = courseCode;
             exam.courseName = courseName;
             exam.depts = depts;
-            exam.room = room;
             exam.invigilator = invigilator;
         }
         
@@ -886,7 +923,8 @@ function addExamDeptTemp() {
 }
 
 function renderTempExamDepts() {
-    renderTags('exam-depts-list', tempExamDepts, (idx) => {
+    const shortNames = tempExamDepts.map(d => getDeptShortName(d));
+    renderTags('exam-depts-list', shortNames, (idx) => {
         tempExamDepts.splice(idx, 1);
         renderTempExamDepts();
         refreshCourseOptions();
@@ -943,7 +981,7 @@ function renderExamsList() {
         const item = document.createElement('div');
         item.className = 'list-item';
         
-        const deptsDisplay = exam.depts.join(', ');
+        const deptsDisplay = exam.depts.map(d => getDeptShortName(d)).join(', ');
 
         item.innerHTML = `
             <div class="item-details">
@@ -1018,10 +1056,11 @@ function renderInvigilatorsList() {
     state.invigilators.forEach((inv, idx) => {
         const item = document.createElement('div');
         item.className = 'list-item';
+        const availText = inv.availableDates.length === 0 ? 'All days' : `${inv.availableDates.length} days`;
         item.innerHTML = `
             <div class="item-details">
                 <strong>${inv.name}</strong>
-                <span>Max: ${inv.maxDuties} | Avail: ${inv.availableDates.length} days</span>
+                <span>Max: ${inv.maxDuties} | Avail: ${availText}</span>
             </div>
             <button class="btn-icon delete-btn" onclick="removeInvigilator(${idx})"><i class="fas fa-trash"></i></button>
         `;
@@ -1036,44 +1075,227 @@ window.removeInvigilator = function(idx) {
     }
 };
 
-// Rooms
-function addRoom() {
-    const name = document.getElementById('room-name').value.trim();
+// ==========================================
+// Student Enrollments
+// ==========================================
 
-    if(name) {
-        showConfirmation(`Add room "${name}"?`, () => {
-            state.rooms.push({ id: Date.now(), name });
+let tempStudentCourses = [];
+
+function handleStudentCSVUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            let data = e.target.result;
+            let rows = [];
+
+            if (file.name.endsWith('.csv')) {
+                rows = data.split('\n').filter(r => r.trim());
+            } else {
+                const workbook = XLSX.read(data, { type: 'binary' });
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                rows = XLSX.utils.sheet_to_csv(worksheet).split('\n').filter(r => r.trim());
+            }
+
+            let successCount = 0;
+            const studentMap = {};
+
+            rows.forEach((row, idx) => {
+                if (idx === 0) return;
+                const cols = row.split(',').map(c => c.trim());
+                if (cols.length < 4) return;
+
+                const studentId = cols[0];
+                const studentName = cols[1];
+                const semester = cols[2];
+                const courseCode = cols[3];
+                const courseType = cols.length >= 5 ? cols[4].toUpperCase() : 'CURRENT';
+
+                if (!studentId || !studentName || !courseCode) return;
+
+                if (!studentMap[studentId]) {
+                    studentMap[studentId] = {
+                        id: studentId,
+                        name: studentName,
+                        courses: []
+                    };
+                }
+
+                studentMap[studentId].courses.push({
+                    code: courseCode,
+                    semester: semester,
+                    type: courseType
+                });
+
+                successCount++;
+            });
+
+            Object.values(studentMap).forEach(student => {
+                if (!state.students.find(s => s.id === student.id)) {
+                    state.students.push(student);
+                }
+            });
+
             saveState();
-            renderRoomsList();
-            document.getElementById('room-name').value = '';
-        });
+            renderStudentsList();
+            alert(`Successfully imported ${successCount} course enrollments for ${Object.keys(studentMap).length} students.`);
+            event.target.value = '';
+        } catch (error) {
+            console.error('CSV Import Error:', error);
+            alert('Error parsing CSV/Excel file. Please check format.');
+        }
+    };
+
+    if (file.name.endsWith('.csv')) {
+        reader.readAsText(file);
     } else {
-        alert('Please enter room name.');
+        reader.readAsBinaryString(file);
     }
 }
 
-function renderRoomsList() {
-    const container = document.getElementById('rooms-list');
+function handleStudentSemesterChange() {
+    const semester = document.getElementById('student-semester').value;
+    const courseSelect = document.getElementById('student-course-select');
+    
+    courseSelect.innerHTML = '<option value="">Select Course</option>';
+    
+    if (!semester) return;
+
+    courseMappings.forEach(course => {
+        const opt = document.createElement('option');
+        opt.value = course.code;
+        opt.innerText = `${course.code} - ${course.name}`;
+        courseSelect.appendChild(opt);
+    });
+}
+
+function addStudentCourseTemp() {
+    const semester = document.getElementById('student-semester').value;
+    const courseCode = document.getElementById('student-course-select').value;
+    
+    if (!semester || !courseCode) {
+        alert('Please select semester and course');
+        return;
+    }
+
+    const courseName = courseMappings.find(c => c.code === courseCode)?.name || courseCode;
+    
+    if (tempStudentCourses.find(c => c.code === courseCode)) {
+        alert('This course is already added for this student');
+        return;
+    }
+
+    tempStudentCourses.push({
+        code: courseCode,
+        semester: semester,
+        name: courseName
+    });
+
+    renderStudentCoursesTemp();
+    document.getElementById('student-course-select').value = '';
+}
+
+function renderStudentCoursesTemp() {
+    const container = document.getElementById('student-courses-list');
     container.innerHTML = '';
-    state.rooms.forEach((room, idx) => {
+    
+    tempStudentCourses.forEach((course, idx) => {
+        const tag = document.createElement('span');
+        tag.className = 'input-tag';
+        tag.innerHTML = `
+            ${course.code} (S${course.semester})
+            <button type="button" onclick="event.preventDefault(); tempStudentCourses.splice(${idx}, 1); renderStudentCoursesTemp();" class="tag-remove">×</button>
+        `;
+        container.appendChild(tag);
+    });
+}
+
+function addStudent() {
+    const studentId = document.getElementById('student-id').value.trim();
+    const studentName = document.getElementById('student-name').value.trim();
+
+    if (!studentId || !studentName) {
+        alert('Please enter student ID and name');
+        return;
+    }
+
+    if (tempStudentCourses.length === 0) {
+        alert('Please add at least one course for this student');
+        return;
+    }
+
+    if (state.students.find(s => s.id === studentId)) {
+        alert('Student with this ID already exists');
+        return;
+    }
+
+    state.students.push({
+        id: studentId,
+        name: studentName,
+        courses: [...tempStudentCourses]
+    });
+
+    saveState();
+    renderStudentsList();
+
+    document.getElementById('student-id').value = '';
+    document.getElementById('student-name').value = '';
+    document.getElementById('student-semester').value = '';
+    document.getElementById('student-course-select').value = '';
+    tempStudentCourses = [];
+    document.getElementById('student-courses-list').innerHTML = '';
+}
+
+function renderStudentsList() {
+    const container = document.getElementById('students-list');
+    container.innerHTML = '';
+
+    if (state.students.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-light); text-align: center; padding: 1rem;">No students added yet</p>';
+        return;
+    }
+
+    state.students.forEach((student, idx) => {
         const item = document.createElement('div');
         item.className = 'list-item';
+        const coursesList = student.courses.map(c => {
+            const typeLabel = c.type === 'RETAKE' ? ' <span style="color: #ff9800; font-size: 0.85rem;">[RETAKE]</span>' : '';
+            return `${c.code} (S${c.semester})${typeLabel}`;
+        }).join(', ');
         item.innerHTML = `
             <div class="item-details">
-                <strong>${room.name}</strong>
+                <strong>${student.name}</strong> (ID: ${student.id})
+                <span>${coursesList}</span>
             </div>
-            <button class="btn-icon delete-btn" onclick="removeRoom(${idx})"><i class="fas fa-trash"></i></button>
+            <button class="btn-icon delete-btn" onclick="removeStudent(${idx})"><i class="fas fa-trash"></i></button>
         `;
         container.appendChild(item);
     });
 }
-window.removeRoom = function(idx) {
-    if(confirm('Remove this room?')) {
-        state.rooms.splice(idx, 1);
+
+window.removeStudent = function(idx) {
+    if(confirm('Remove this student?')) {
+        state.students.splice(idx, 1);
         saveState();
-        renderRoomsList();
+        renderStudentsList();
     }
 };
+
+function clearAllStudents() {
+    if (state.students.length === 0) {
+        alert('No students to clear.');
+        return;
+    }
+    
+    if(confirm(`Are you sure you want to delete all ${state.students.length} student(s)? This action cannot be undone.`)) {
+        state.students = [];
+        saveState();
+        renderStudentsList();
+    }
+}
+
 
 // Generic Tag Renderer
 function renderTags(containerId, items, removeCallback) {
@@ -1099,6 +1321,110 @@ function getDatesInRange(startDate, endDate) {
     return dates;
 }
 
+function detectStudentConflicts() {
+    state.studentConflicts = [];
+
+    if (!state.generatedDatesheet || state.generatedDatesheet.length === 0) return;
+
+    // 1. Detect individual student conflicts
+    if (state.students && state.students.length > 0) {
+        state.students.forEach(student => {
+            const studentExams = [];
+
+            student.courses.forEach(course => {
+                const exams = state.generatedDatesheet
+                    .map((e, idx) => ({ ...e, originalIndex: idx }))
+                    .filter(e => e.courseCode === course.code);
+                
+                exams.forEach(exam => {
+                    studentExams.push(exam);
+                });
+            });
+
+            if (studentExams.length > 1) {
+                for (let i = 0; i < studentExams.length; i++) {
+                    for (let j = i + 1; j < studentExams.length; j++) {
+                        const exam1 = studentExams[i];
+                        const exam2 = studentExams[j];
+
+                        if (exam1.date === exam2.date && exam1.time === exam2.time) {
+                            state.studentConflicts.push({
+                                type: 'student',
+                                studentId: student.id,
+                                studentName: student.name,
+                                exam1: exam1.courseCode,
+                                exam1Index: exam1.originalIndex,
+                                exam2: exam2.courseCode,
+                                exam2Index: exam2.originalIndex,
+                                date: exam1.date,
+                                time: exam1.time,
+                                message: `${student.name} (ID: ${student.id}) has two exams at the same time.`
+                            });
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // 2. Detect Semester Conflicts (Same semester, same slot)
+    // 3. Detect Invigilator Conflicts (Same invigilator, same slot)
+    const slotMap = {};
+    state.generatedDatesheet.forEach((exam, idx) => {
+        const key = `${exam.date}|${exam.time}`;
+        if (!slotMap[key]) slotMap[key] = [];
+        slotMap[key].push({ ...exam, index: idx });
+    });
+
+    Object.keys(slotMap).forEach(key => {
+        const examsInSlot = slotMap[key];
+        const semesterMap = {};
+        const invigilatorMap = {};
+        
+        examsInSlot.forEach(exam => {
+            // Semester grouping
+            if (!semesterMap[exam.semester]) semesterMap[exam.semester] = [];
+            semesterMap[exam.semester].push(exam);
+
+            // Invigilator grouping
+            if (exam.invigilator && exam.invigilator !== 'N/A') {
+                if (!invigilatorMap[exam.invigilator]) invigilatorMap[exam.invigilator] = [];
+                invigilatorMap[exam.invigilator].push(exam);
+            }
+        });
+
+        const [date, time] = key.split('|');
+
+        // Check Semester Conflicts
+        Object.keys(semesterMap).forEach(sem => {
+            if (semesterMap[sem].length > 1) {
+                state.studentConflicts.push({
+                    type: 'semester',
+                    semester: sem,
+                    exams: semesterMap[sem].map(e => ({ code: e.courseCode, index: e.index })),
+                    date: date,
+                    time: time,
+                    message: `Multiple exams for Semester ${sem} in the same slot.`
+                });
+            }
+        });
+
+        // Check Invigilator Conflicts
+        Object.keys(invigilatorMap).forEach(inv => {
+            if (invigilatorMap[inv].length > 1) {
+                state.studentConflicts.push({
+                    type: 'invigilator',
+                    invigilator: inv,
+                    exams: invigilatorMap[inv].map(e => ({ code: e.courseCode, index: e.index })),
+                    date: date,
+                    time: time,
+                    message: `Invigilator ${inv} is assigned to multiple exams in the same slot.`
+                });
+            }
+        });
+    });
+}
+
 function generateDatesheet() {
     console.log('Generating datesheet...');
     try {
@@ -1114,14 +1440,12 @@ function generateDatesheet() {
             alert('Please add at least one exam.');
             return;
         }
-        if(state.rooms.length === 0) {
-            alert('Please add at least one room.');
-            return;
-        }
-
+        
         state.config.startDate = start;
         state.config.endDate = end;
         state.conflicts = [];
+        state.studentConflicts = [];
+        state.solvedConflicts = [];
         state.generatedDatesheet = [];
 
         // Reset Assignments
@@ -1135,9 +1459,14 @@ function generateDatesheet() {
         // Create all possible slots (Date + Time)
         let availableSlots = [];
         dates.forEach(date => {
-            slots.forEach(time => {
-                availableSlots.push({ date, time, exams: [] });
-            });
+            const dateObj = new Date(date);
+            const isSunday = dateObj.getDay() === 0;
+            
+            if (!isSunday) {
+                slots.forEach(time => {
+                    availableSlots.push({ date, time, exams: [] });
+                });
+            }
         });
         console.log(`Available Slots created: ${availableSlots.length}`);
 
@@ -1151,12 +1480,7 @@ function generateDatesheet() {
             
             // Find all valid slots for this exam
             for (let slot of availableSlots) {
-                // Check Room Availability
-                const usedRoomsInSlot = slot.exams.map(e => e.room.id);
-                const validRooms = state.rooms.filter(r => !usedRoomsInSlot.includes(r.id));
-
-                if(validRooms.length === 0) continue;
-                
+                                
                 // Check Invigilator Availability
                 const busyInvigilatorsInSlot = slot.exams.map(e => e.invigilator ? e.invigilator.id : null).filter(id => id !== null);
                 
@@ -1172,7 +1496,6 @@ function generateDatesheet() {
                 // This slot is valid, store it with its available resources
                 possibleSlots.push({
                     slot: slot,
-                    validRooms: validRooms,
                     validInvigilators: validInvigilators
                 });
             }
@@ -1184,7 +1507,6 @@ function generateDatesheet() {
                 
                 const chosen = possibleSlots[0];
                 const slot = chosen.slot;
-                const room = shuffleArray(chosen.validRooms)[0];
                 
                 let invigilator = null;
                 if (chosen.validInvigilators.length > 0) {
@@ -1194,7 +1516,7 @@ function generateDatesheet() {
 
                 if(invigilator) invigilator.assignedDuties++;
                 
-                slot.exams.push({ exam, room, invigilator });
+                slot.exams.push({ exam, invigilator });
 
                 state.generatedDatesheet.push({
                     date: slot.date,
@@ -1203,17 +1525,17 @@ function generateDatesheet() {
                     courseCode: exam.code,
                     courseName: exam.name,
                     depts: exam.depts,
-                    room: room.name,
                     invigilator: invigilator ? invigilator.name : 'N/A'
                 });
             } else {
                 console.warn(`Could not place exam: ${exam.code}`);
-                state.conflicts.push(`Could not schedule ${exam.code} (${exam.name}) - No available room or invigilator that maintains spacing.`);
+                state.conflicts.push(`Could not schedule ${exam.code} (${exam.name}) - No available invigilator or slot that maintains spacing.`);
             }
         });
 
         console.log(`Generated ${state.generatedDatesheet.length} entries`);
         renderDatesheet();
+        detectStudentConflicts();
         renderConflicts();
         saveState();
         
@@ -1226,6 +1548,49 @@ function generateDatesheet() {
     }
 }
 
+
+function getDeptShortName(deptName) {
+    if (!deptName) return '';
+    
+    let name = deptName.trim();
+    
+    // Explicit mapping for full names to short forms as requested
+    const fullToShort = {
+        'Computer Science': 'CS',
+        'Software Engineering': 'SE',
+        'Software Engineer': 'SE',
+        'Accounting & Finance': 'AF',
+        'Digital Design / Communication Arts': 'DDCA',
+        'Digital Design & Computer Arts': 'DDCA',
+        'Business Administration': 'BBA',
+        'Psychology': 'PSY',
+        'Interior Design': 'ID',
+        'English & Linguistic Studies': 'ELS'
+    };
+
+    // Check for exact or partial matches of full names
+    for (const full in fullToShort) {
+        if (name.toLowerCase().includes(full.toLowerCase())) {
+            return fullToShort[full];
+        }
+    }
+    
+    // Original fallback logic for formats like "CS – Computer Science"
+    const separators = [' – ', ' - ', ' — ', ' (', ' : '];
+    for (const sep of separators) {
+        if (name.includes(sep)) {
+            return name.split(sep)[0].trim();
+        }
+    }
+    
+    // Regex fallback for any dash type
+    const regexParts = name.split(/[–—-]/);
+    if (regexParts.length > 1) {
+        return regexParts[0].trim();
+    }
+    
+    return name;
+}
 
 // ==========================================
 // Rendering
@@ -1290,13 +1655,16 @@ function renderDatesheet() {
                 const clickHandler = isSunday ? '' : `onclick="event.stopPropagation(); editScheduledExam(${idx})"`;
                 const deleteBtn = isSunday ? '' : `<button class="block-delete-btn" onclick="event.stopPropagation(); deleteScheduledExam(${idx})"><i class="fas fa-times"></i></button>`;
 
+                // Get short department names
+                const shortDepts = (entry.depts || []).map(d => getDeptShortName(d)).join(', ');
+
                 html += `
                     <div class="exam-block" draggable="${isDraggable}" data-index="${idx}" ${clickHandler}>
                         ${deleteBtn}
                         <div class="block-code">${entry.courseCode} (S${entry.semester})</div>
                         <div class="block-name">${entry.courseName}</div>
                         <div class="block-meta">
-                            <span class="block-tag"><i class="fas fa-door-open"></i> ${entry.room}</span>
+                            <span class="block-tag"><i class="fas fa-building"></i> ${shortDepts}</span>
                             <span class="block-tag"><i class="fas fa-user-tie"></i> ${entry.invigilator}</span>
                         </div>
                     </div>
@@ -1346,24 +1714,129 @@ function setupTableEvents() {
 
 function renderConflicts() {
     const container = document.getElementById('conflicts-list');
-    if(state.conflicts.length === 0) {
+    const totalActive = (state.conflicts || []).length + (state.studentConflicts || []).length;
+    const totalSolved = (state.solvedConflicts || []).length;
+    
+    if(totalActive === 0 && totalSolved === 0) {
         container.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-check-circle" style="font-size: 3rem; color: var(--success-color); margin-bottom: 1rem;"></i>
                 <p>No conflicts detected. All exams scheduled successfully.</p>
             </div>`;
-    } else {
-        let html = '<div class="conflicts-wrapper">';
-        state.conflicts.forEach(c => {
+        return;
+    }
+
+    let html = '<div class="conflicts-wrapper">';
+    
+    // Regular scheduling conflicts (Unplaced exams)
+    if (state.conflicts && state.conflicts.length > 0) {
+        html += `
+            <div class="card conflict-card">
+                <h3 class="card-title" style="color: var(--danger-color);">
+                    <i class="fas fa-calendar-times"></i> Unscheduled Exams
+                </h3>
+                <div class="conflict-section-content">
+        `;
+        state.conflicts.forEach((c, idx) => {
             html += `
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-circle"></i> ${c}
+                <div class="alert alert-danger conflict-item">
+                    <div class="conflict-info">
+                        <i class="fas fa-exclamation-circle"></i> ${c}
+                    </div>
+                    <div class="conflict-actions">
+                        <button class="btn btn-sm btn-outline-danger" onclick="attemptToPlaceUnscheduled(${idx})">
+                            <i class="fas fa-magic"></i> Auto-Place
+                        </button>
+                    </div>
                 </div>
             `;
         });
-        html += '</div>';
-        container.innerHTML = html;
+        html += '</div></div>';
     }
+    
+    // Student/Semester/Invigilator exam conflicts
+    if (state.studentConflicts && state.studentConflicts.length > 0) {
+        html += `
+            <div class="card conflict-card">
+                <h3 class="card-title" style="color: var(--warning-color);">
+                    <i class="fas fa-users"></i> Detected Conflicts
+                </h3>
+                <div class="conflict-section-content">
+        `;
+        state.studentConflicts.forEach((conflict, idx) => {
+            const dateObj = new Date(conflict.date);
+            const dateStr = dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+            
+            let icon = 'fa-user-clock';
+            let typeLabel = 'Student Conflict';
+            let conflictDetail = '';
+
+            if (conflict.type === 'semester') {
+                icon = 'fa-layer-group';
+                typeLabel = 'Semester Conflict';
+                conflictDetail = conflict.exams.map(e => e.code).join(' vs ');
+            } else if (conflict.type === 'invigilator') {
+                icon = 'fa-user-tie';
+                typeLabel = 'Invigilator Conflict';
+                conflictDetail = conflict.exams.map(e => e.code).join(' vs ');
+            } else {
+                conflictDetail = `${conflict.exam1} vs ${conflict.exam2}`;
+            }
+            
+            html += `
+                <div class="alert alert-warning conflict-item">
+                    <div class="conflict-info">
+                        <i class="fas ${icon}"></i>
+                        <strong>${typeLabel}</strong>: ${conflict.message}
+                        <div style="font-size: 0.85rem; margin-top: 5px;">
+                            <i class="far fa-calendar-alt"></i> ${dateStr} at ${conflict.time}
+                            <br/>&nbsp;&nbsp;• ${conflictDetail}
+                        </div>
+                    </div>
+                    <div class="conflict-actions">
+                        <button class="btn btn-sm btn-outline-warning" onclick="solveConflict(${idx})">
+                            <i class="fas fa-wrench"></i> Quick Fix
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div></div>';
+    }
+
+    // Solved Conflicts Section
+    if (totalSolved > 0) {
+        html += `
+            <div class="card conflict-card">
+                <h3 class="card-title" style="color: var(--success-color);">
+                    <i class="fas fa-check-double"></i> Recently Solved
+                </h3>
+                <div class="conflict-section-content">
+        `;
+        state.solvedConflicts.slice().reverse().forEach(sc => {
+            let icon = 'fa-check-circle';
+            if (sc.type === 'semester') icon = 'fa-layer-group';
+            if (sc.type === 'invigilator') icon = 'fa-user-tie';
+            if (sc.type === 'unscheduled') icon = 'fa-magic';
+
+            html += `
+                <div class="alert alert-success conflict-item solved-conflict">
+                    <div class="conflict-info">
+                        <i class="fas ${icon}"></i>
+                        <span style="text-decoration: line-through; opacity: 0.7;">${sc.message || (sc.type + ' conflict')}</span>
+                        <div style="font-size: 0.85rem; margin-top: 5px; color: var(--success-color);">
+                            <i class="fas fa-arrow-right"></i> Resolved: ${sc.resolvedTo}
+                            <span style="float: right; opacity: 0.6; font-size: 0.75rem;">${sc.solvedAt}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div></div>';
+    }
+    
+    html += '</div>';
+    container.innerHTML = html;
 }
 
 // ==========================================
@@ -1373,10 +1846,10 @@ function renderConflicts() {
 function exportCSV() {
     if(state.generatedDatesheet.length === 0) return alert('No data to export');
     
-    let csv = 'Date,Time,Semester,Course Code,Course Name,Departments,Room,Invigilator\n';
+    let csv = 'Date,Time,Semester,Course Code,Course Name,Departments,Invigilator\n';
     state.generatedDatesheet.forEach(row => {
         const deptsStr = row.depts.join('; ');
-        csv += `${row.date},${row.time},${row.semester},${row.courseCode},"${row.courseName}","${deptsStr}","${row.room}","${row.invigilator}"\n`;
+        csv += `${row.date},${row.time},${row.semester},${row.courseCode},"${row.courseName}","${deptsStr}","${row.invigilator}"\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -1396,7 +1869,7 @@ function exportPDF() {
     document.getElementById('pdf-modal').classList.add('active');
 }
 
-async function processPDFDownload() {
+async function processPDFDownload(copyType) {
     const instituteName = document.getElementById('pdf-institute-name').value || 'University Datesheet';
     const examTitle = document.getElementById('pdf-exam-title').value || '';
     const logoFile = document.getElementById('pdf-logo').files[0];
@@ -1413,9 +1886,8 @@ async function processPDFDownload() {
             reader.onload = (e) => resolve(e.target.result);
             reader.readAsDataURL(logoFile);
         });
-        // Add logo (x, y, w, h)
         doc.addImage(logoData, 'PNG', 14, 10, 25, 25);
-        currentY = 15; // Reset currentY for text alignment with logo
+        currentY = 15;
     }
 
     // Add Institute Name
@@ -1424,54 +1896,80 @@ async function processPDFDownload() {
     doc.text(instituteName, logoFile ? 45 : 14, currentY + 10);
     
     // Add Exam Title
-    if (examTitle) {
-        doc.setFontSize(16);
-        doc.setTextColor(100);
-        doc.text(examTitle, logoFile ? 45 : 14, currentY + 18);
-    }
+    const titleText = examTitle + (copyType === 'student' ? ' (Student Copy)' : ' (Office Copy)');
+    doc.setFontSize(16);
+    doc.setTextColor(100);
+    doc.text(titleText, logoFile ? 45 : 14, currentY + 18);
 
     // Add Generation Date
     doc.setFontSize(10);
     doc.setTextColor(150);
     doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 280, 20, { align: 'right' });
 
-    // Prepare table data
-    const head = [['Date', 'Time', 'Sem', 'Course Code', 'Course Name', 'Departments', 'Room', 'Invigilator']];
-    const body = state.generatedDatesheet.map(entry => [
-        entry.date,
-        entry.time,
-        entry.semester,
-        entry.courseCode,
-        entry.courseName,
-        entry.depts.join(', '),
-        entry.room,
-        entry.invigilator
-    ]);
+    // Prepare table data (Grid Layout)
+    const dates = getDatesInRange(state.config.startDate, state.config.endDate);
+    const slots = state.config.timeSlots;
+
+    const head = [['Date / Time', ...slots]];
+    const body = dates.map(date => {
+        const dateObj = new Date(date);
+        const dateStr = dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        const isSunday = dateObj.getDay() === 0;
+
+        const row = [dateStr];
+        slots.forEach(slot => {
+            if (isSunday) {
+                row.push('OFF');
+            } else {
+                const entries = state.generatedDatesheet.filter(e => e.date === date && e.time === slot);
+                if (entries.length > 0) {
+                    const text = entries.map(e => {
+                        const shortDepts = (e.depts || []).map(d => getDeptShortName(d)).join(', ');
+                        let cellContent = `${e.courseCode} (S${e.semester})\n${e.courseName}\nDepts: ${shortDepts}`;
+                        if (copyType === 'office') {
+                            cellContent += `\nInv: ${e.invigilator}`;
+                        }
+                        return cellContent;
+                    }).join('\n\n');
+                    row.push(text);
+                } else {
+                    row.push('');
+                }
+            }
+        });
+        return row;
+    });
 
     // Generate Table
     doc.autoTable({
         head: head,
         body: body,
         startY: logoFile ? 40 : 45,
-        theme: 'striped',
-        headStyles: { fillColor: [74, 144, 226], textColor: 255 },
-        styles: { fontSize: 9, cellPadding: 3 },
+        theme: 'grid',
+        headStyles: { fillColor: [74, 144, 226], textColor: 255, halign: 'center', valign: 'middle' },
+        styles: { fontSize: 8, cellPadding: 2, halign: 'left', valign: 'top', minCellHeight: 15 },
         columnStyles: {
-            0: { cellWidth: 25 }, // Date
-            1: { cellWidth: 30 }, // Time
-            2: { cellWidth: 10 }, // Sem
-            3: { cellWidth: 25 }, // Course Code
-            4: { cellWidth: 'auto' }, // Course Name
-            5: { cellWidth: 40 }, // Departments
-            6: { cellWidth: 20 }, // Room
-            7: { cellWidth: 25 }  // Invigilator
+            0: { fontStyle: 'bold', fillColor: [245, 247, 250], cellWidth: 35 }
         },
-        margin: { top: 35 }
+        didParseCell: function(data) {
+            // Highlight Sundays
+            if (data.row.index >= 0 && data.section === 'body') {
+                const date = dates[data.row.index];
+                if (new Date(date).getDay() === 0) {
+                    data.cell.styles.fillColor = [255, 235, 235];
+                    data.cell.styles.textColor = [217, 83, 79];
+                    data.cell.styles.halign = 'center';
+                    data.cell.styles.valign = 'middle';
+                    data.cell.styles.fontStyle = 'bold';
+                }
+            }
+        }
     });
 
     // Close Modal and Save PDF
-    document.getElementById('pdf-modal').classList.remove('active');
-    doc.save(`${instituteName.replace(/\s+/g, '_')}_Datesheet.pdf`);
+    document.getElementById('pdf-type-modal').classList.remove('active');
+    const fileNameSuffix = copyType === 'student' ? 'Student_Copy' : 'Office_Copy';
+    doc.save(`${instituteName.replace(/\s+/g, '_')}_Datesheet_${fileNameSuffix}.pdf`);
 }
 
 // ==========================================
@@ -1602,25 +2100,9 @@ window.onDrop = function(e) {
 }
 
 function checkConflictsAfterMove() {
-    state.conflicts = [];
-    const scheduled = state.generatedDatesheet;
-    
-    for (let i = 0; i < scheduled.length; i++) {
-        for (let j = i + 1; j < scheduled.length; j++) {
-            const a = scheduled[i];
-            const b = scheduled[j];
-            
-            if (a.date === b.date && a.time === b.time) {
-                // Same slot
-                if (a.room === b.room) {
-                    state.conflicts.push(`Conflict: ${a.courseCode} and ${b.courseCode} are both scheduled in ${a.room} on ${a.date} at ${a.time}`);
-                }
-                if (a.invigilator !== 'N/A' && a.invigilator === b.invigilator) {
-                    state.conflicts.push(`Conflict: Invigilator ${a.invigilator} is assigned to both ${a.courseCode} and ${b.courseCode} on ${a.date} at ${a.time}`);
-                }
-            }
-        }
-    }
+    // We don't clear state.conflicts here because those are unplaced exams from generation.
+    // We only recalculate student/semester/invigilator conflicts.
+    detectStudentConflicts();
     renderConflicts();
 }
 
@@ -1638,11 +2120,7 @@ window.editScheduledExam = function(index) {
     document.getElementById('edit-course-name').value = exam.courseName;
     document.getElementById('edit-depts').value = exam.depts.join(', ');
     
-    // Fill room select
-    const roomSelect = document.getElementById('edit-room');
-    roomSelect.innerHTML = '<option value="">Select Room</option>' + 
-        state.rooms.map(r => `<option value="${r.name}" ${r.name === exam.room ? 'selected' : ''}>${r.name}</option>`).join('');
-    
+        
     // Fill invigilator select
     const invSelect = document.getElementById('edit-invigilator');
     invSelect.innerHTML = '<option value="">Select Invigilator</option>' + 
@@ -1671,11 +2149,7 @@ window.openAddExamModal = function(date, slot) {
     document.getElementById('edit-course-name').value = '';
     document.getElementById('edit-depts').value = '';
     
-    // Fill room select
-    const roomSelect = document.getElementById('edit-room');
-    roomSelect.innerHTML = '<option value="">Select Room</option>' + 
-        state.rooms.map(r => `<option value="${r.name}">${r.name}</option>`).join('');
-    
+        
     // Fill invigilator select
     const invSelect = document.getElementById('edit-invigilator');
     invSelect.innerHTML = '<option value="">Select Invigilator</option>' + 
@@ -1773,7 +2247,6 @@ function processImportedData(data, event) {
         name: findCol(['name', 'subject', 'course', 'title']),
         semester: findCol(['semester', 'sem', 'level']),
         depts: findCol(['dept', 'department', 'program']),
-        room: findCol(['room', 'venue', 'room no']),
         invigilator: findCol(['invigilator', 'teacher', 'supervisor', 'staff'])
     };
 
@@ -1781,7 +2254,6 @@ function processImportedData(data, event) {
     const foundDates = new Set();
     const foundSlots = new Set();
     const foundDepts = new Set();
-    const foundRooms = new Set();
     const foundInvigilators = new Set();
     let maxSemester = 0;
 
@@ -1832,9 +2304,7 @@ function processImportedData(data, event) {
         const deptsList = deptsStr ? deptsStr.split(/[,;|]/).map(d => d.trim()).filter(d => d) : [];
         deptsList.forEach(d => foundDepts.add(d));
 
-        const roomVal = colMap.room !== -1 && row[colMap.room] ? row[colMap.room].toString().trim() : 'N/A';
-        if (roomVal && roomVal !== 'N/A') foundRooms.add(roomVal);
-
+        
         const invVal = colMap.invigilator !== -1 && row[colMap.invigilator] ? row[colMap.invigilator].toString().trim() : 'N/A';
         if (invVal && invVal !== 'N/A') foundInvigilators.add(invVal);
 
@@ -1845,7 +2315,6 @@ function processImportedData(data, event) {
             courseName: colMap.name !== -1 && row[colMap.name] ? row[colMap.name].toString().trim() : 'Untitled Subject',
             semester: semNum.toString(),
             depts: deptsList,
-            room: roomVal,
             invigilator: invVal
         };
 
@@ -1882,13 +2351,7 @@ function processImportedData(data, event) {
         // Sync auxiliary lists (Append new, keep existing)
         state.departments = [...new Set([...state.departments, ...foundDepts])];
         
-        const existingRoomNames = new Set(state.rooms.map(r => r.name));
-        foundRooms.forEach(name => {
-            if (!existingRoomNames.has(name)) {
-                state.rooms.push({ id: Date.now() + Math.random(), name });
-            }
-        });
-
+        
         const existingInvNames = new Set(state.invigilators.map(i => i.name));
         foundInvigilators.forEach(name => {
             if (!existingInvNames.has(name)) {
@@ -1910,7 +2373,6 @@ function processImportedData(data, event) {
         renderTimeSlots();
         renderDeptList();
         updateDeptSelect();
-        renderRoomsList();
         renderInvigilatorsList();
         renderExamsList(); // Added this to refresh the exams list UI
         
@@ -1957,6 +2419,168 @@ function parseCSV(text) {
 
 // Modal Buttons
 // ==========================================
+// ==========================================
+// Conflict Resolution
+// ==========================================
+
+/**
+ * Resolves a detected conflict by finding a new slot for one of the involved exams.
+ */
+function solveConflict(conflictIndex) {
+    const conflict = state.studentConflicts[conflictIndex];
+    if (!conflict) return;
+
+    // Identify which exam to move. We'll try to move the first one.
+    const examIndex = (conflict.type === 'semester' || conflict.type === 'invigilator') 
+        ? conflict.exams[0].index 
+        : conflict.exam1Index;
+    const examToMove = state.generatedDatesheet[examIndex];
+
+    if (!examToMove) {
+        alert("Could not find the exam to move.");
+        return;
+    }
+
+    const originalDate = examToMove.date;
+    const originalTime = examToMove.time;
+
+    // Try to find a new slot
+    const dates = getDatesInRange(state.config.startDate, state.config.endDate);
+    const slots = state.config.timeSlots;
+    
+    let foundNewSlot = false;
+    
+    for (let date of dates) {
+        const dateObj = new Date(date);
+        if (dateObj.getDay() === 0) continue; // Skip Sundays
+
+        for (let time of slots) {
+            if (date === originalDate && time === originalTime) continue;
+
+            // Check if this new slot is safe
+            if (isSlotSafeForExam(examToMove, date, time)) {
+                // Move the exam
+                examToMove.date = date;
+                examToMove.time = time;
+                foundNewSlot = true;
+                break;
+            }
+        }
+        if (foundNewSlot) break;
+    }
+
+    if (foundNewSlot) {
+        // Record as solved before re-detecting
+        state.solvedConflicts.push({
+            ...conflict,
+            solvedAt: new Date().toLocaleTimeString(),
+            resolvedTo: `${new Date(examToMove.date).toLocaleDateString()} ${examToMove.time}`
+        });
+
+        detectStudentConflicts();
+        renderDatesheet();
+        renderConflicts();
+        saveState();
+        
+        // Show success with animation/feedback
+        const msg = `Resolved! Moved ${examToMove.courseCode} to ${new Date(examToMove.date).toLocaleDateString()} ${examToMove.time}`;
+        console.log(msg);
+    } else {
+        alert("Could not find an alternative conflict-free slot automatically. Please move the exam manually using the datesheet grid.");
+    }
+}
+
+function isSlotSafeForExam(exam, date, time) {
+    const courseCode = exam.courseCode || exam.code;
+    const semester = exam.semester;
+
+    // 1. Semester conflict check
+    const sameSemesterExams = state.generatedDatesheet.filter(e => 
+        e.semester === semester && e.date === date && e.time === time && e.courseCode !== courseCode
+    );
+    if (sameSemesterExams.length > 0) return false;
+
+    // 2. Student conflict check
+    if (state.students && state.students.length > 0) {
+        for (let student of state.students) {
+            const hasCourse = student.courses.some(c => c.code === courseCode);
+            if (hasCourse) {
+                const otherExams = student.courses
+                    .filter(c => c.code !== courseCode)
+                    .map(c => state.generatedDatesheet.find(e => e.courseCode === c.code))
+                    .filter(e => e && e.date === date && e.time === time);
+                
+                if (otherExams.length > 0) return false;
+            }
+        }
+    }
+
+    // 3. Invigilator check (if they have one and it's not a new placement)
+    if (exam.invigilator && exam.invigilator !== 'N/A') {
+        const busyInv = state.generatedDatesheet.some(e => 
+            e.invigilator === exam.invigilator && e.date === date && e.time === time && e.courseCode !== courseCode
+        );
+        if (busyInv) return false;
+    }
+
+    return true;
+}
+
+function attemptToPlaceUnscheduled(conflictIndex) {
+    const conflictMsg = state.conflicts[conflictIndex];
+    // Extract course code from message
+    const match = conflictMsg.match(/Could not schedule ([^ ]+)/);
+    if (!match) return;
+    
+    const courseCode = match[1];
+    const examData = state.exams.find(e => e.code === courseCode);
+    
+    if (!examData) return;
+
+    const dates = getDatesInRange(state.config.startDate, state.config.endDate);
+    const slots = state.config.timeSlots;
+    
+    for (let date of dates) {
+        const dateObj = new Date(date);
+        if (dateObj.getDay() === 0) continue;
+
+        for (let time of slots) {
+            if (isSlotSafeForExam(examData, date, time)) {
+                // Place it
+                state.generatedDatesheet.push({
+                    date: date,
+                    time: time,
+                    semester: examData.semester,
+                    courseCode: examData.code,
+                    courseName: examData.name,
+                    depts: examData.depts,
+                    invigilator: 'N/A'
+                });
+                
+                state.conflicts.splice(conflictIndex, 1);
+                
+                state.solvedConflicts.push({
+                    type: 'unscheduled',
+                    message: `Auto-placed unscheduled exam: ${courseCode}`,
+                    date: date,
+                    time: time,
+                    solvedAt: new Date().toLocaleTimeString(),
+                    resolvedTo: `${new Date(date).toLocaleDateString()} ${time}`
+                });
+
+                detectStudentConflicts();
+                renderDatesheet();
+                renderConflicts();
+                saveState();
+                alert(`Placed ${courseCode} on ${new Date(date).toLocaleDateString()} at ${time}`);
+                return;
+            }
+        }
+    }
+    
+    alert("Still could not find a safe slot for this exam. Try expanding the date range or adding more time slots.");
+}
+
 // Persistence (Local Storage)
 // ==========================================
 function saveState() {
@@ -2000,8 +2624,8 @@ function refreshUIFromState() {
     renderTimeSlots();
     renderDeptList();
     updateDeptSelect();
-    renderRoomsList();
     renderInvigilatorsList();
+    renderStudentsList();
     renderExamsList();
     
     // 3. Update semester dropdowns
