@@ -407,6 +407,9 @@
 
               <div class="form-group">
                 <label>Available Dates (Optional)</label>
+                <p style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.5rem;">
+                  Leave empty to make available on all exam days
+                </p>
                 <div class="input-group">
                   <input type="date" id="invigilator-available-date" />
                   <button
@@ -432,29 +435,84 @@
               </button>
             </div>
 
-            <!-- Rooms -->
+            <!-- Students & Enrollments -->
             <div class="card">
-              <h3 class="card-title"><i class="fas fa-door-open"></i> Rooms</h3>
-              <div id="rooms-list" class="items-list"></div>
-
-              <div class="form-row">
-                <div class="form-group" style="flex: 1">
-                  <label>Room Name/Number</label>
-                  <input
-                    type="text"
-                    id="room-name"
-                    placeholder="e.g., Room 101"
-                  />
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3 class="card-title" style="margin: 0;">
+                  <i class="fas fa-graduation-cap"></i> Students & Enrollments
+                </h3>
+                <button class="btn btn-sm btn-secondary" id="clear-all-students-btn" style="white-space: nowrap; background-color: #dc3545; border-color: #dc3545; color: white;">
+                  <i class="fas fa-trash-alt"></i> Clear All
+                </button>
+              </div>
+              
+              <!-- CSV Upload Tab -->
+              <div class="form-group">
+                <label><i class="fas fa-file-upload"></i> Import Students from CSV/Excel</label>
+                <p style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.5rem;">
+                  Format: StudentID, Name, Semester, CourseCode, CourseType (Type: CURRENT or RETAKE)
+                </p>
+                <div class="input-group">
+                  <input type="file" id="student-csv-input" accept=".csv, .xlsx, .xls" style="display: none;" />
+                  <button class="btn btn-secondary" id="student-csv-upload-btn">
+                    <i class="fas fa-upload"></i> Upload CSV/Excel
+                  </button>
                 </div>
               </div>
 
-              <button
-                class="btn btn-secondary"
-                id="add-room-btn"
-                style="width: 100%; margin-top: 0.5rem"
-              >
-                <i class="fas fa-plus"></i> Add Room
-              </button>
+              <!-- Manual Entry Tab -->
+              <div style="border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 1rem;">
+                <h4 style="margin-bottom: 1rem; font-size: 0.95rem;">
+                  <i class="fas fa-plus-circle"></i> Add Student Manually
+                </h4>
+                <div class="form-row">
+                  <div class="form-group" style="flex: 1">
+                    <label for="student-id">Student ID</label>
+                    <input type="text" id="student-id" placeholder="e.g., 001" />
+                  </div>
+                  <div class="form-group" style="flex: 2">
+                    <label for="student-name">Student Name</label>
+                    <input type="text" id="student-name" placeholder="e.g., Ali Khan" />
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group" style="flex: 1">
+                    <label for="student-semester">Semester</label>
+                    <select id="student-semester">
+                      <option value="">Select Semester</option>
+                    </select>
+                  </div>
+                  <div class="form-group" style="flex: 2">
+                    <label for="student-course-select">Course/Subject Code</label>
+                    <div class="searchable-select">
+                      <select id="student-course-select">
+                        <option value="">Select Course</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="form-group" style="flex: 0.5;">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-sm btn-secondary" id="add-student-course-btn" style="width: 100%; padding: 0.5rem;">
+                      Add
+                    </button>
+                  </div>
+                </div>
+
+                <div id="student-courses-list" class="input-tag-group" style="margin-bottom: 1rem;"></div>
+
+                <button class="btn btn-secondary" id="add-student-btn" style="width: 100%; margin-top: 0.5rem;">
+                  <i class="fas fa-user-plus"></i> Add Student
+                </button>
+              </div>
+
+              <!-- Students List -->
+              <div style="border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 1rem;">
+                <h4 style="margin-bottom: 1rem;">
+                  <i class="fas fa-list"></i> Enrolled Students
+                </h4>
+                <div id="students-list" class="items-list"></div>
+              </div>
             </div>
 
             <!-- Generate Button -->
@@ -611,13 +669,7 @@
             <label>Departments (Comma separated)</label>
             <input type="text" id="edit-depts" />
           </div>
-          <div class="form-group">
-            <label for="edit-room">Room</label>
-            <div class="searchable-select">
-              <select id="edit-room"></select>
-            </div>
-          </div>
-          <div class="form-group">
+                    <div class="form-group">
             <label for="edit-invigilator">Invigilator</label>
             <div class="searchable-select">
               <select id="edit-invigilator"></select>
