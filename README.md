@@ -6,7 +6,7 @@ A single-page web app for creating and managing exam datesheets. It lets you con
 - Muhammad Amaan
 
 ## Important Info
-- This is specially designed for a specific University, SO you wanna use, first edit your slots, teachers, and everything related to this.
+- This is specially designed for a specific University, So if you wanna use, first edit your slots, teachers, and everything related to this.
 
 ## Features
 - Date range and daily time slot configuration
