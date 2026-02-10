@@ -922,6 +922,40 @@ input[type="date"] {
     gap: 1rem;
 }
 
+/* PDF Type Modal Buttons */
+.pdf-type-footer {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.pdf-type-footer .btn {
+    width: 100%;
+    padding: 0.9rem 1.25rem;
+    font-weight: 600;
+}
+
+#office-copy-btn {
+    background: var(--success-color);
+    border-color: var(--success-color);
+    color: #fff;
+}
+
+#office-copy-btn:hover {
+    background: #4da44d;
+    border-color: #4da44d;
+}
+
+#student-copy-btn {
+    background: #fff;
+    border-color: var(--border-color);
+    color: var(--text-color);
+}
+
+#student-copy-btn:hover {
+    border-color: var(--text-muted);
+    background: var(--hover-bg);
+}
+
 /* Copy Type Options Styling */
 .copy-type-options {
     display: flex;

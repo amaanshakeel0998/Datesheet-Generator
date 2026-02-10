@@ -1869,6 +1869,15 @@ function exportPDF() {
     document.getElementById('pdf-modal').classList.add('active');
 }
 
+function getCellPadding(cell, side) {
+    if (typeof cell.padding === 'function') {
+        return cell.padding(side);
+    }
+    const padding = cell.styles.cellPadding || 0;
+    if (typeof padding === 'number') return padding;
+    return padding[side] || 0;
+}
+
 async function processPDFDownload(copyType) {
     const instituteName = document.getElementById('pdf-institute-name').value || 'University Datesheet';
     const examTitle = document.getElementById('pdf-exam-title').value || '';
@@ -1923,15 +1932,26 @@ async function processPDFDownload(copyType) {
             } else {
                 const entries = state.generatedDatesheet.filter(e => e.date === date && e.time === slot);
                 if (entries.length > 0) {
-                    const text = entries.map(e => {
-                        const shortDepts = (e.depts || []).map(d => getDeptShortName(d)).join(', ');
-                        let cellContent = `${e.courseCode} (S${e.semester})\n${e.courseName}\nDepts: ${shortDepts}`;
-                        if (copyType === 'office') {
-                            cellContent += `\nInv: ${e.invigilator}`;
-                        }
-                        return cellContent;
-                    }).join('\n\n');
-                    row.push(text);
+                    if (copyType === 'office') {
+                        const officeBlocks = entries.map(e => {
+                            const shortDepts = (e.depts || []).map(d => getDeptShortName(d)).join(', ');
+                            return {
+                                title: e.courseName,
+                                lines: [
+                                    `Code: ${e.courseCode} (S${e.semester})`,
+                                    `Depts: ${shortDepts}`,
+                                    `Inv: ${e.invigilator}`
+                                ]
+                            };
+                        });
+                        row.push({ content: '', __officeBlocks: officeBlocks });
+                    } else {
+                        const text = entries.map(e => {
+                            const shortDepts = (e.depts || []).map(d => getDeptShortName(d)).join(', ');
+                            return `${e.courseName}\n${e.courseCode} (S${e.semester})\nDepts: ${shortDepts}`;
+                        }).join('\n\n');
+                        row.push(text);
+                    }
                 } else {
                     row.push('');
                 }
@@ -1962,6 +1982,38 @@ async function processPDFDownload(copyType) {
                     data.cell.styles.valign = 'middle';
                     data.cell.styles.fontStyle = 'bold';
                 }
+            }
+            if (copyType === 'office' && data.section === 'body' && data.cell.raw && data.cell.raw.__officeBlocks) {
+                const blocks = data.cell.raw.__officeBlocks;
+                const lines = [];
+                blocks.forEach((block, index) => {
+                    lines.push(block.title);
+                    block.lines.forEach(line => lines.push(line));
+                    if (index < blocks.length - 1) {
+                        lines.push('');
+                    }
+                });
+                data.cell.text = lines;
+                data.cell.styles.fontStyle = 'bold';
+                data.cell.styles.cellPadding = { top: 2, left: 2, right: 2, bottom: 2 };
+            }
+        },
+        didDrawCell: function(data) {
+            if (copyType !== 'office' || data.section !== 'body' || !data.cell.raw || !data.cell.raw.__officeBlocks) {
+                return;
+            }
+            const doc = data.doc;
+            const cell = data.cell;
+            const lines = Array.isArray(cell.text) ? cell.text : [];
+            if (!lines.length) return;
+
+            if (lines.length > 1) {
+                const firstLine = lines[0];
+                const restLines = lines.slice(1);
+                const textLines = [firstLine, ...restLines];
+                cell.text = textLines;
+                cell.styles.fontStyle = 'normal';
+                cell.styles.textColor = [40, 40, 40];
             }
         }
     });
